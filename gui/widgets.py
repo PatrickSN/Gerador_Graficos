@@ -62,6 +62,8 @@ def create_right_panel(main_window, parent, clear_command, grafico_command):
 
     main_window.title_entry = title_entry
     main_window.subtitle_entry = subtitle_entry
+    main_window.eixoX_entry = eixoX_entry
+    main_window.eixoY_entry = eixoY_entry
 
     return frame
 

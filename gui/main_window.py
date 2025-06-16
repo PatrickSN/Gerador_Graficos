@@ -69,19 +69,27 @@ class MainWindow(ctk.CTk):
             return
         
         # Verifica se o título e subtítulo foram preenchidos
-        title = self.title_entry.get() if self.title_entry else ""
-        subtitle = self.subtitle_entry.get() if self.subtitle_entry else ""
         
         # Verifica se o eixo X e Y foram preenchidos
-        eixoX = self.eixoX_entry.get() if hasattr(self, "eixoX_entry") else ""
-        eixoY = self.eixoY_entry.get() if hasattr(self, "eixoY_entry") else ""
 
         # Verifica se o teste foi selecionado
         tipo_teste = self.testes_var.get() if hasattr(self, "testes_var") else ""
+
+        dados = {
+            "title": self.title_entry.get() if self.title_entry else "",
+            "subtitle": self.subtitle_entry.get() if self.subtitle_entry else "",
+            "eixoX": self.eixoX_entry.get() if hasattr(self, "eixoX_entry") else "",
+            "eixoY": self.eixoY_entry.get() if hasattr(self, "eixoY_entry") else "",
+            "control": self.val_var.get() if hasattr(self, "val_var") else "",
+            "value": self.value_var.get() if hasattr(self, "value_var") else 0.05,
+            "df": self.df
+        }
+
+        print(f"Dados para o gráfico: {dados}")
+        return
         
         if tipo_teste == "dunnet":
             display_table(self.table_scrollable, pd.DataFrame({"Desenvolvimento": ["Selecione outro teste estatístico!"]}))
-            return
             build_dunnett_test(self.df, title, subtitle, eixoX, eixoY)
         elif tipo_teste == "teste_t":
             build_t_test(self.df, title, subtitle, eixoX, eixoY)
@@ -124,6 +132,12 @@ class MainWindow(ctk.CTk):
             
         if self.subtitle_entry:
             self.subtitle_entry.delete(0, "end")
+
+        if self.eixoX_entry:
+            self.eixoX_entry.delete(0, "end")
+        
+        if self.eixoY_entry:
+            self.eixoY_entry.delete(0, "end")
 
         if hasattr(self, "value_var"):
             self.value_var.set(0.05)
