@@ -50,7 +50,32 @@ class test_t:
         return significance
 
     def build_t_test(data, title="", subtitle="", eixoX="", eixoY=""):
-        pass
+        return        
+        # Resumo estatístico
+        summary = data.groupby("name").agg(
+            Mean=("value", "mean"),
+            SE=("value", lambda x: x.std() / np.sqrt(len(x)))
+        ).reset_index()
+        summary["Letters"] = summary["name"].map(sig_dict)
+        # Plotar
+        plt.figure(figsize=(6, 6))
+        sns.barplot(data=data, x="name", y="value", estimator=np.mean, ci=None, order=order_of_treatments, color="blue", alpha=0.8)
+        sns.stripplot(data=data, x="name", y="value", order=order_of_treatments, color="black", size=4, jitter=0.15)
+        plt.errorbar(summary["name"], summary["Mean"], yerr=summary["SE"], fmt='none', color='black', capsize=5)
+
+        # Adicionar texto de significância
+        for i, row in summary.iterrows():
+            plt.text(i, row["Mean"] + row["SE"] + 2, row["Letters"], ha='center', va='bottom', fontsize=12)
+
+        plt.xticks(ticks=range(len(new_labels)), labels=new_labels, rotation=45, ha='right')
+        plt.ylabel("mRNA/Actin")
+        plt.title("LIMYB")
+        sns.despine()
+        plt.tight_layout()
+
+        # Salvar imagem
+        plt.savefig("L:/Programas/R/figuras tiff/imagens/figS1a_tiff_py.tiff", dpi=800)
+        plt.show()
 
 if __name__ == "__main__":
     # Exemplo de uso

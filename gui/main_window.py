@@ -39,7 +39,7 @@ class MainWindow(ctk.CTk):
 
     def upload_excel(self):
         file_path = filedialog.askopenfilename(
-            filetypes=[("Excel Files", "*.xlsx *.xls *.csv")],
+            filetypes=[("Excel Files", "*.xlsx *.xls ")],
             title="Selecione a planilha Excel"
         )
         if file_path:
@@ -82,7 +82,8 @@ class MainWindow(ctk.CTk):
             "eixoY": self.eixoY_entry.get() if hasattr(self, "eixoY_entry") else "",
             "control": self.val_var.get() if hasattr(self, "val_var") else "",
             "value": self.value_var.get() if hasattr(self, "value_var") else 0.05,
-            "df": self.df
+            "treatments": self.treatments_var if hasattr(self, "treatments_var") else "",
+            "factors": self.factors_var if hasattr(self, "factors_var") else ""
         }
 
         print(f"Dados para o gráfico: {dados}")
@@ -106,13 +107,13 @@ class MainWindow(ctk.CTk):
         # Verifica a seleção do teste
         if self.testes_var.get() == "dunnet":
             cabecalho_esperado = ["Treatment", "Factors", "Values"]
-            treatments = order_of_(self.df, "Treatment")
-            factors = order_of_(self.df, "Factors")
-            build_frame_variaveis(self, self.left_frame, factors)
+            self.treatments_var = order_of_(self.df, "Treatment")
+            self.factors_var = order_of_(self.df, "Factors")
+            build_frame_variaveis(self, self.left_frame, self.factors_var)
         elif self.testes_var.get() == "teste_t":
             cabecalho_esperado = ["Treatment", "Values"]
-            treatments = order_of_(self.df, "Treatment")
-            build_frame_variaveis(self, self.left_frame, treatments)
+            self.treatments_var = order_of_(self.df, "Treatment")
+            build_frame_variaveis(self, self.left_frame, self.treatments_var)
         
         # Retorma a tabela
         else:
