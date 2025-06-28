@@ -1,9 +1,13 @@
 import customtkinter as ctk
-from tkinter import filedialog
-from gui.widgets import *
-from gui.test_t import *
-from gui.test_dunnett import *
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import matplotlib.ticker as ticker
+
+from tkinter import filedialog
+
+from gui.widgets import *
+from gui.estatistica import *
 
 # acesso ao value e testes
 # valor_value = self.value_var.get()
@@ -54,78 +58,119 @@ class MainWindow(ctk.CTk):
                 # Carrega os dados da aba selecionada
                 self.load_selected_sheet(excel_file)
 
+                # retorna os valores da 1 coluna com excecao da linha 1
+
+
+                # Cria variáveis e widgets para as colunas
+                build_frame_variaveis(self, self.left_frame, self.df.columns.tolist())
+
                 # Associa mudança de aba ao carregamento dos dados
                 def on_sheet_change(choice):
                     self.load_selected_sheet(excel_file)
+                    build_frame_variaveis(self, self.left_frame, self.df.columns.tolist())
+
                 self.sheet_var.trace_add("write", lambda *args: on_sheet_change(self.sheet_var.get()))
 
             except Exception as e:
                 display_table(self.table_scrollable, pd.DataFrame({"Erro": [str(e)]}))
-                print(f"Erro ao carregar o arquivo: {e}")
-
-    def build_grafico(self):
-        if not hasattr(self, "df") or self.df.empty:
-            display_table(self.table_scrollable, pd.DataFrame({"Erro": ["Nenhum dado carregado!"]}))
-            return
-        
-        # Verifica se o título e subtítulo foram preenchidos
-        
-        # Verifica se o eixo X e Y foram preenchidos
-
-        # Verifica se o teste foi selecionado
-        tipo_teste = self.testes_var.get() if hasattr(self, "testes_var") else ""
-
-        dados = {
-            "title": self.title_entry.get() if self.title_entry else "",
-            "subtitle": self.subtitle_entry.get() if self.subtitle_entry else "",
-            "eixoX": self.eixoX_entry.get() if hasattr(self, "eixoX_entry") else "",
-            "eixoY": self.eixoY_entry.get() if hasattr(self, "eixoY_entry") else "",
-            "control": self.val_var.get() if hasattr(self, "val_var") else "",
-            "value": self.value_var.get() if hasattr(self, "value_var") else 0.05,
-            "treatments": self.treatments_var if hasattr(self, "treatments_var") else "",
-            "factors": self.factors_var if hasattr(self, "factors_var") else ""
-        }
-
-        print(f"Dados para o gráfico: {dados}")
-        return
-        
-        if tipo_teste == "dunnet":
-            display_table(self.table_scrollable, pd.DataFrame({"Desenvolvimento": ["Selecione outro teste estatístico!"]}))
-            build_dunnett_test(self.df, title, subtitle, eixoX, eixoY)
-        elif tipo_teste == "teste_t":
-            build_t_test(self.df, title, subtitle, eixoX, eixoY)
-        else:
-            display_table(self.table_scrollable, pd.DataFrame({"Erro": ["Selecione um teste estatístico válido!"]}))
 
     def load_selected_sheet(self, excel_file):
-        self.destroy_variables()
+        self.destroy_tabel()
         aba = self.sheet_var.get()
         if not aba:
             return
         self.df = pd.read_excel(excel_file, sheet_name=aba, engine="openpyxl")
-        
-        # Verifica a seleção do teste
-        if self.testes_var.get() == "dunnet":
-            cabecalho_esperado = ["Treatment", "Factors", "Values"]
-            self.treatments_var = order_of_(self.df, "Treatment")
-            self.factors_var = order_of_(self.df, "Factors")
-            build_frame_variaveis(self, self.left_frame, self.factors_var)
-        elif self.testes_var.get() == "teste_t":
-            cabecalho_esperado = ["Treatment", "Values"]
-            self.treatments_var = order_of_(self.df, "Treatment")
-            build_frame_variaveis(self, self.left_frame, self.treatments_var)
-        
-        # Retorma a tabela
-        else:
-            display_table(self.table_scrollable, self.df)
-            return
 
-        # Verifica se o cabeçalho está correto
-        if list(self.df.columns) != cabecalho_esperado:
-            display_table(self.table_scrollable, pd.DataFrame({"Erro": ["Cabeçalho inválido! Para o teste é esperado: " + ", ".join(cabecalho_esperado)]}))
+        # Retorma a tabela
+        display_table(self.table_scrollable, self.df)
+        return
+    
+    def gerar_estatisticas(self):
+        if self.testes_var.get() == "dunnett":
+            # Executa o teste de Dunnett
+            results, order_colum = run_test_dunnett(
+                self.df,
+                response_col=self.response_col.get(),
+                group_col=self.group_col.get(),
+                control=self.control_var.get(),
+                alpha=self.value_var.get()
+            )
+            
+            # Adiciona estatísticas resumidas e significância
+            results = add_significance(
+                self.df,
+                results,
+                response_col=self.response_col.get(),
+                group_col=self.group_col.get(),
+                control=self.control_var.get(),
+                alpha=self.value_var.get()
+            )
+
+        elif self.testes_var.get() == "tukey":
+            # Executa o teste de Tukey
+            results = run_test_tukey(
+                self.df,
+                response_col=self.response_col.get(),
+                group_col=self.group_col.get(),
+                alpha=self.value_var.get()
+            )
+            # Adiciona significância
+            results = add_significance_tukey(results, alpha=self.value_var.get())
+            
+
+        else:
+            # Exibe mensagem de erro se nenhum teste for selecionado
+            results = pd.DataFrame({"": ["Selecione um teste estatístico válido."]})
+        
+        # Exibe os resultados na tabela
+        display_table(self.table_scrollable, results)
+        return results, order_colum if self.testes_var.get() == "dunnett" else None
+
+    def build_grafico(self):
+        # Verifica se o DataFrame foi carregado
+        if not hasattr(self, "df") or self.df.empty:
+            display_table(self.table_scrollable, pd.DataFrame({"": ["Nenhum DataFrame carregado."]}))
+            return
+        # Verifica se as entradas necessárias estão preenchidas
+        if (self.testes_var.get()=="" or self.group_col.get()=="" or self.response_col.get()=="" or self.control_var.get()==""):
+            display_table(self.table_scrollable, pd.DataFrame({"": ["Preencha todos os campos obrigatórios."]}))
             return
         
-        display_table(self.table_scrollable, self.df)
+        summary_stats, order = self.gerar_estatisticas()
+
+        # Configurações iniciais
+        plt.rcParams['font.family'] = 'Arial'
+        plt.rcParams['font.size'] = 9
+
+        # Configurar o plot
+        plt.figure(figsize=(8/2.54, 8/2.54))  # Converter cm para polegadas
+        ax = plt.gca()
+        # Barras
+        sns.barplot(x=self.group_col.get(), y='mean', data=summary_stats, 
+                    errorbar='se', capsize=0.2, 
+                    width=0.3, alpha=0.8, ax=ax)
+        # Pontos individuais
+        sns.stripplot(x=self.group_col.get(), y=self.response_col.get(), data=self.df, 
+                    jitter=0.1, size=2, color='black', ax=ax)
+        
+        # Elementos estéticos
+        ax.set_xticklabels(order, rotation=45, ha='right')
+        ax.set(xlabel=self.eixoX_entry.get(), ylabel=self.eixoY_entry.get(), title=self.title_entry.get())
+        ax.yaxis.set_major_locator(ticker.MultipleLocator(20))
+        ax.set_ylim(0, 80*1.4)  # Ajuste similar à expansão do R
+
+        # Adicionar significância
+        for i, row in summary_stats.iterrows():
+            y_pos = row['mean'] + row['SE']
+            ax.text(i, y_pos, row['significance'], ha='center', va='bottom', size=12)
+
+        # Remover bordas
+        sns.despine()
+
+        # Salvar figura
+        plt.tight_layout()
+        plt.show()
+        
 
     def clear_entries(self):
         if self.title_entry:
@@ -142,19 +187,17 @@ class MainWindow(ctk.CTk):
 
         if hasattr(self, "value_var"):
             self.value_var.set(0.05)
+
         if hasattr(self, "testes_var"):
             self.testes_var.set("")
         
-        self.destroy_variables()
+        self.destroy_tabel()
 
         if hasattr(self.table_scrollable, "tree") and self.table_scrollable.tree:
             self.table_scrollable.tree.destroy()
             self.table_scrollable.tree = None
 
-    def destroy_variables(self):        
-        if hasattr(self, "val_var"):
-            self.val_var.set("")
-
+    def destroy_tabel(self):
         if hasattr(self, "variaveis_widgets"):
             for widget in self.variaveis_widgets:
                 widget.destroy()
