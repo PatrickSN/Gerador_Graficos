@@ -175,10 +175,12 @@ class MainWindow(ctk.CTk):
                     jitter=0.1, size=2, color='black', ax=ax)
         
         # Elementos estéticos
+        y_max = (summary_stats['mean'] + summary_stats['SE']).max()
         ax.set_xticklabels(order, rotation=45, ha='right')
         ax.set(xlabel=self.eixoX_entry.get(), ylabel=self.eixoY_entry.get(), title=self.title_entry.get())
-        ax.yaxis.set_major_locator(ticker.MultipleLocator(20))
-        ax.set_ylim(0, 80*1.4)  # Ajuste similar à expansão do R
+        y_espaco = 0.2 * y_max * 1.2
+        ax.yaxis.set_major_locator(ticker.MultipleLocator(y_espaco))
+        ax.set_ylim(0, y_max * 1.2)
 
         # Adicionar significância
         for i, row in summary_stats.iterrows():
