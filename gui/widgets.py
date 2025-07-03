@@ -4,6 +4,14 @@ from tkinter import ttk
 
 
 def create_left_panel(main_window, parent, upload_command):
+    """ Cria o painel esquerdo da janela principal com opções de upload, seleção de planilha e configurações de testes estatísticos.
+    Parâmetros:
+    - main_window: Instância da janela principal.
+    - parent: Frame pai onde os widgets serão adicionados.
+    - upload_command: Função a ser chamada ao clicar no botão de upload.
+    Retorna:
+    - frame: Frame contendo os widgets de seleção e configuração.
+    """
     frame = ctk.CTkFrame(parent)
 
     # Grupo de seleção de planilha
@@ -52,6 +60,15 @@ def create_left_panel(main_window, parent, upload_command):
     return frame
 
 def create_right_panel(main_window, parent, clear_command, grafico_command):
+    """ Cria o painel direito da janela principal com campos de entrada para título, subtítulo, eixos X e Y, além de botões para gerar gráfico e limpar entradas.
+    Parâmetros:
+    - main_window: Instância da janela principal.
+    - parent: Frame pai onde os widgets serão adicionados.
+    - clear_command: Função a ser chamada ao clicar no botão de limpar entradas.
+    - grafico_command: Função a ser chamada ao clicar no botão de gerar gráfico.
+    Retorna:
+    - frame: Frame contendo os widgets de entrada e botões.
+    """
     frame = ctk.CTkFrame(parent)
     
     title_entry = ctk.CTkEntry(frame, placeholder_text="Entrada do Título")
@@ -100,6 +117,9 @@ def build_frame_variaveis(main_window, frame, variaveis):
 
     # Adiciona menu de tratamentos disponíveis
     def atualizar_controles(*args):
+        """ Atualiza o menu de controles com base na coluna de tratamento selecionada.
+        Se a coluna não existir no DataFrame, remove o menu antigo e limpa a variável de controle.
+        """
         try:
             # Remove menu antigo se existir
             if hasattr(main_window, "control_menu") and main_window.control_menu:
@@ -133,12 +153,26 @@ def build_frame_variaveis(main_window, frame, variaveis):
 
 
 def create_table_frame(parent):
+    """ Cria um frame para exibir uma tabela com rolagem.
+    Parâmetros:
+    - parent: Frame pai onde o frame da tabela será adicionado.
+    Retorna:
+    - frame: Frame contendo o scrollable frame para a tabela.
+    - scrollable: Frame rolável onde a tabela será exibida.
+    """
     frame = ctk.CTkFrame(parent)
     scrollable = ctk.CTkScrollableFrame(frame)
     scrollable.pack(padx=10, pady=10, fill="both", expand=True)
     return frame, scrollable
 
 def display_table(scrollable_frame, df):
+    """ Exibe um DataFrame em um Treeview dentro de um frame rolável.
+    Parâmetros:
+    - scrollable_frame: Frame rolável onde a tabela será exibida.
+    - df: DataFrame a ser exibido.
+    Se o scrollable_frame já tiver um Treeview, ele será destruído e substituído
+    por um novo Treeview com os dados do DataFrame.
+    """
     # Remove Treeview antigo, se existir
     if hasattr(scrollable_frame, "tree") and scrollable_frame.tree:
         scrollable_frame.tree.destroy()
@@ -173,12 +207,26 @@ def display_table(scrollable_frame, df):
     insert_rows(tree, df)
 
 def insert_rows(tree, df):
+    """ Insere as linhas de um DataFrame em um Treeview.
+    Parâmetros:
+    - tree: Treeview onde as linhas serão inseridas.
+    - df: DataFrame cujas linhas serão inseridas.
+    Limpa o Treeview antes de inserir novas linhas.
+    """
     for row in tree.get_children():
         tree.delete(row)
     for _, row in df.iterrows():
         tree.insert("", "end", values=list(row))
 
 def sort_by_column(scrollable_frame, df, tree, col):
+    """ Ordena o DataFrame por uma coluna específica e atualiza o Treeview.
+    Parâmetros:
+    - scrollable_frame: Frame rolável onde o Treeview está localizado.
+    - df: DataFrame a ser ordenado.
+    - tree: Treeview a ser atualizado.
+    - col: Nome da coluna pela qual ordenar.
+    Inverte a ordem de ordenação a cada clique na coluna.
+    """
     ascending = scrollable_frame.sort_ascending[col]
     df.sort_values(by=col, ascending=ascending, inplace=True, ignore_index=True)
     insert_rows(tree, df)

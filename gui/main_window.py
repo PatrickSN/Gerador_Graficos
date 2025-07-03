@@ -15,11 +15,15 @@ from gui.estatistica import *
 
 class MainWindow(ctk.CTk):
     def __init__(self):
+        """ Inicializa a janela principal da aplicação.
+        Configura o título, tamanho mínimo e cria os frames principais.
+        Cria os frames esquerdo e direito, além do frame da tabela.
+        """
         super().__init__()
 
         self.title("Análise de Dados com Testes Estatísticos")
         self.geometry(None)
-        self.minsize(width=800, height=600)
+        self.minsize(width=1000, height=600)
 
         self.title_entry = None
         self.subtitle_entry = None
@@ -42,6 +46,9 @@ class MainWindow(ctk.CTk):
         self.table_frame.pack(padx=20, pady=(0, 20), fill="both", expand=True)
 
     def upload_excel(self):
+        """ Abre um diálogo para selecionar um arquivo Excel e carrega suas abas.
+        Atualiza o OptionMenu com as abas disponíveis e carrega os dados da aba selecionada
+        """
         file_path = filedialog.askopenfilename(
             filetypes=[("Excel Files", "*.xlsx *.xls ")],
             title="Selecione a planilha Excel"
@@ -75,6 +82,10 @@ class MainWindow(ctk.CTk):
                 display_table(self.table_scrollable, pd.DataFrame({"Erro": [str(e)]}))
 
     def load_selected_sheet(self, excel_file):
+        """ Carrega a aba selecionada do arquivo Excel e exibe os dados na tabela.
+        Args:
+            excel_file (pd.ExcelFile): Objeto ExcelFile contendo as abas do arquivo.
+        """
         self.destroy_tabel()
         aba = self.sheet_var.get()
         if not aba:
@@ -86,6 +97,12 @@ class MainWindow(ctk.CTk):
         return
     
     def gerar_estatisticas(self):
+        """ Gera estatísticas resumidas e executa testes estatísticos com base nas entradas do usuário.
+        Retorna:
+            results (DataFrame): DataFrame com os resultados dos testes estatísticos.
+            order_colum (list): Lista com a ordem das colunas para o gráfico, se o teste for Dunnett.
+        """
+
         if self.testes_var.get() == "dunnett":
             # Executa o teste de Dunnett
             results, order_colum = run_test_dunnett(
@@ -127,6 +144,10 @@ class MainWindow(ctk.CTk):
         return results, order_colum if self.testes_var.get() == "dunnett" else None
 
     def build_grafico(self):
+        """ Gera o gráfico com base nas estatísticas calculadas e exibe na janela.
+        Verifica se o DataFrame foi carregado e se as entradas necessárias estão preenchidas.
+        Se não estiverem, exibe uma mensagem de erro na tabela.
+        """
         # Verifica se o DataFrame foi carregado
         if not hasattr(self, "df") or self.df.empty:
             display_table(self.table_scrollable, pd.DataFrame({"": ["Nenhum DataFrame carregado."]}))
@@ -173,6 +194,9 @@ class MainWindow(ctk.CTk):
         
 
     def clear_entries(self):
+        """ Limpa todas as entradas e widgets da janela.
+        Remove os textos dos campos de entrada, destrói a tabela e limpa as variáveis.
+        """
         if self.title_entry:
             self.title_entry.delete(0, "end")
             
