@@ -69,12 +69,12 @@ class MainWindow(ctk.CTk):
 
 
                 # Cria variáveis e widgets para as colunas
-                build_frame_variaveis(self, self.left_frame, self.df.columns.tolist())
+                build_frame_variaveis(self, self.frame_variaveis, self.df.columns.tolist())
 
                 # Associa mudança de aba ao carregamento dos dados
                 def on_sheet_change(choice):
                     self.load_selected_sheet(excel_file)
-                    build_frame_variaveis(self, self.left_frame, self.df.columns.tolist())
+                    build_frame_variaveis(self, self.frame_variaveis, self.df.columns.tolist())
 
                 self.sheet_var.trace_add("write", lambda *args: on_sheet_change(self.sheet_var.get()))
 
@@ -123,6 +123,26 @@ class MainWindow(ctk.CTk):
                 alpha=self.value_var.get()
             )
 
+        elif self.testes_var.get() == "t-test":
+            # Verifica se o fator_col está definido
+
+            if not self.fator_col.get():
+
+                groups = self.df[self.group_col.get()].unique()
+                print(groups)
+                if len(groups) != 2:
+                    display_table(self.table_scrollable, pd.DataFrame({"Erro": ["Para o teste t, deve haver exatamente dois grupos."]}))
+                    return
+            # Executa o teste t
+
+            results = run_t_test(
+                self.df,
+                group_col=self.group_col.get(),
+                fator_col=self.fator_col.get(),
+                response_col=self.response_col.get()
+            )
+            # Adiciona significância
+
         elif self.testes_var.get() == "tukey":
             # Executa o teste de Tukey
             results = run_test_tukey(
@@ -153,9 +173,9 @@ class MainWindow(ctk.CTk):
             display_table(self.table_scrollable, pd.DataFrame({"": ["Nenhum DataFrame carregado."]}))
             return
         # Verifica se as entradas necessárias estão preenchidas
-        if (self.testes_var.get()=="" or self.group_col.get()=="" or self.response_col.get()=="" or self.control_var.get()==""):
+        """if (self.testes_var.get()=="" or self.group_col.get()=="" or self.response_col.get()=="" or self.control_var.get()==""):
             display_table(self.table_scrollable, pd.DataFrame({"": ["Preencha todos os campos obrigatórios."]}))
-            return
+            return"""
         
         summary_stats, order = self.gerar_estatisticas()
 
@@ -164,7 +184,7 @@ class MainWindow(ctk.CTk):
         plt.rcParams['font.size'] = 9
 
         # Configurar o plot
-        plt.figure(figsize=(8/2.54, 8/2.54))  # Converter cm para polegadas
+        plt.figure(figsize=(8/2.54, 8/2.54), dpi=300)  # Converter cm para polegadas
         ax = plt.gca()
         # Barras
         sns.barplot(x=self.group_col.get(), y='mean', data=summary_stats, 
@@ -191,8 +211,9 @@ class MainWindow(ctk.CTk):
         sns.despine()
 
         # Salvar figura
+        plt.savefig("grafico2.tiff", format="tiff", bbox_inches="tight")
         plt.tight_layout()
-        plt.show()
+        plt.show(block=False)
         
 
     def clear_entries(self):

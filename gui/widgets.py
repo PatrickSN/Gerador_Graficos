@@ -41,19 +41,28 @@ def create_left_panel(main_window, parent, upload_command):
     )
     rb5 = ctk.CTkRadioButton(frame, text="Dunnett", variable=testes_var, value="dunnett"
     )
+    rb6 = ctk.CTkRadioButton(frame, text="T-test", variable=testes_var, value="t-test"
+    )
     rb4.grid(row=2, column=1)
     rb5.grid(row=2, column=2)
+    rb6.grid(row=2, column=3)
 
     def up_ao_mudar(*args):
-        pass
+        if hasattr(main_window, "df"):
+            build_frame_variaveis(main_window, main_window.frame_variaveis, main_window.df.columns.tolist())
 
     testes_var.trace_add("write", up_ao_mudar)
     value_var.trace_add("write", up_ao_mudar)
 
+    # Cria o frame de variáveis e salva na main_window
+    frame_variaveis = ctk.CTkFrame(frame)
+    frame_variaveis.grid(row=5, column=0, columnspan=4, sticky="ew", padx=10, pady=10)
+    main_window.frame_variaveis = frame_variaveis
+
     # Salva referências se necessário
     main_window.value_var = value_var
     main_window.testes_var = testes_var
-    main_window.radiobuttons = [rb1, rb2, rb3, rb4, rb5]
+    main_window.radiobuttons = [rb1, rb2, rb3, rb4, rb5, rb6]
     main_window.sheet_menu = sheet_menu
     main_window.sheet_var = sheet_var
 
@@ -101,32 +110,12 @@ def build_frame_variaveis(main_window, frame, variaveis):
     - variaveis: Lista de variáveis disponíveis para seleção.
     Se variaveis estiver vazio, não cria os widgets de seleção.
     """
-    if not variaveis:
-        ctk.CTkLabel(frame, text="Nenhuma variável disponível.").grid(row=3, column=0, columnspan=4, padx=10, pady=(10, 5))
-        return
-
-    ctk.CTkLabel(frame, text="*Coluna de tratamento:").grid(row=3, column=0, padx=10, pady=(10, 5), sticky="e")
-    group_col = ctk.StringVar(value=variaveis[0] if variaveis else "")
-    group_menu = ctk.CTkOptionMenu(frame, variable=group_col, values=variaveis)
-    group_menu.grid(row=3, column=1, padx=(0, 20))
-
-    ctk.CTkLabel(frame, text="*Coluna dos valores:").grid(row=3, column=2, padx=10, pady=(10, 5), sticky="e")
-    response_col = ctk.StringVar(value=variaveis[len(variaveis)-1])
-    response_menu = ctk.CTkOptionMenu(frame, variable=response_col, values=variaveis)
-    response_menu.grid(row=3, column=3, padx=(0, 20))
-
     # Adiciona menu de tratamentos disponíveis
     def atualizar_controles(*args):
         """ Atualiza o menu de controles com base na coluna de tratamento selecionada.
         Se a coluna não existir no DataFrame, remove o menu antigo e limpa a variável de controle.
         """
         try:
-            # Remove menu antigo se existir
-            if hasattr(main_window, "control_menu") and main_window.control_menu:
-                main_window.control_menu.destroy()
-            if hasattr(main_window, "control_label") and main_window.control_label:
-                main_window.control_label.destroy()
-
             col = group_col.get()
             if hasattr(main_window, "df") and col in main_window.df.columns:
                 controls = main_window.df[col].dropna().unique().tolist()
@@ -145,10 +134,63 @@ def build_frame_variaveis(main_window, frame, variaveis):
             if hasattr(main_window, "control_label"):
                 main_window.control_label.destroy()
 
-    group_col.trace_add("write", atualizar_controles)
-    atualizar_controles()  # Inicializa ao criar
+    # Limpa o frame antes de adicionar novos widgets
+    for widget in frame.winfo_children():
+        widget.destroy()
+
+    if not variaveis:
+        ctk.CTkLabel(frame, text="Nenhuma variável disponível.").grid(row=3, column=0, columnspan=4, padx=10, pady=(10, 5))
+        return
+    
+    if main_window.testes_var.get() not in ["dunnett", "tukey", "t-test"]:
+        ctk.CTkLabel(frame, text="Selecione um teste estatístico.").grid(row=3, column=0, columnspan=4, padx=10, pady=(10, 5))
+        return
+
+    if main_window.testes_var.get() == "t-test" and len(variaveis) >= 3:
+        ctk.CTkLabel(frame, text="*Coluna dos grupos:").grid(row=3, column=0, padx=10, pady=(10, 5), sticky="e")
+        group_col = ctk.StringVar(value=variaveis[0] if variaveis else "")
+        group_menu = ctk.CTkOptionMenu(frame, variable=group_col, values=variaveis)
+        group_menu.grid(row=3, column=1, padx=(0, 20))
+
+        ctk.CTkLabel(frame, text="*Coluna dos fatores:").grid(row=3, column=2, padx=10, pady=(10, 5), sticky="e")
+        fator_col = ctk.StringVar(value=variaveis[len(variaveis)-2])
+        fator_menu = ctk.CTkOptionMenu(frame, variable=fator_col, values=variaveis)
+        fator_menu.grid(row=3, column=3, padx=(0, 20))
+
+        ctk.CTkLabel(frame, text="*Coluna dos valores:").grid(row=3, column=4, padx=10, pady=(10, 5), sticky="e")
+        response_col = ctk.StringVar(value=variaveis[len(variaveis)-1])
+        response_menu = ctk.CTkOptionMenu(frame, variable=response_col, values=variaveis)
+        response_menu.grid(row=3, column=5, padx=(0, 20))
+
+    elif main_window.testes_var.get() == "t-test": 
+        ctk.CTkLabel(frame, text="*Coluna dos grupos:").grid(row=3, column=0, padx=10, pady=(10, 5), sticky="e")
+        group_col = ctk.StringVar(value=variaveis[0] if variaveis else "")
+        group_menu = ctk.CTkOptionMenu(frame, variable=group_col, values=variaveis)
+        group_menu.grid(row=3, column=1, padx=(0, 20))
+
+        ctk.CTkLabel(frame, text="*Coluna dos valores:").grid(row=3, column=2, padx=10, pady=(10, 5), sticky="e")
+        response_col = ctk.StringVar(value=variaveis[len(variaveis)-1])
+        response_menu = ctk.CTkOptionMenu(frame, variable=response_col, values=variaveis)
+        response_menu.grid(row=3, column=3, padx=(0, 20))
+
+        fator_col = ctk.StringVar(value=None)  # Não é necessário fator_col para t-test com apenas dois grupos sem fator
+
+
+    else:
+        ctk.CTkLabel(frame, text="*Coluna dos grupos:").grid(row=3, column=0, padx=10, pady=(10, 5), sticky="e")
+        group_col = ctk.StringVar(value=variaveis[0] if variaveis else "")
+        group_menu = ctk.CTkOptionMenu(frame, variable=group_col, values=variaveis)
+        group_menu.grid(row=3, column=1, padx=(0, 20))
+
+        ctk.CTkLabel(frame, text="*Coluna dos valores:").grid(row=3, column=2, padx=10, pady=(10, 5), sticky="e")
+        response_col = ctk.StringVar(value=variaveis[len(variaveis)-1])
+        response_menu = ctk.CTkOptionMenu(frame, variable=response_col, values=variaveis)
+        response_menu.grid(row=3, column=3, padx=(0, 20))
+        group_col.trace_add("write", atualizar_controles)
+        atualizar_controles()  # Inicializa ao criar
 
     main_window.group_col = group_col
+    main_window.fator_col = fator_col
     main_window.response_col = response_col
 
 
@@ -176,16 +218,20 @@ def display_table(scrollable_frame, df):
     # Remove Treeview antigo, se existir
     if hasattr(scrollable_frame, "tree") and scrollable_frame.tree:
         scrollable_frame.tree.destroy()
-    if hasattr(scrollable_frame, "h_scroll") and scrollable_frame.h_scroll:
-        scrollable_frame.h_scroll.destroy()
 
     # Cria novo Treeview
     tree = ttk.Treeview(scrollable_frame, columns=list(df.columns), show="headings")
     tree.pack(fill="both", expand=True, side="top")
 
     # Scrollbar horizontal
-    h_scroll = ttk.Scrollbar(scrollable_frame, orient="horizontal", command=tree.xview)
-    h_scroll.pack(fill="x", side="bottom")
+    if not hasattr(scrollable_frame, "h_scroll") or not scrollable_frame.h_scroll:
+        h_scroll = ttk.Scrollbar(scrollable_frame, orient="horizontal", command=tree.xview)
+        h_scroll.pack(fill="x", side="bottom", expand=True)
+        scrollable_frame.h_scroll = h_scroll
+    else:
+        h_scroll = scrollable_frame.h_scroll
+        h_scroll.config(command=tree.xview)
+        h_scroll.pack(fill="x", side="bottom", expand=True)
     tree.configure(xscrollcommand=h_scroll.set)
 
     # Inicializa dicionário de ordenação, se necessário

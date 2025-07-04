@@ -1,14 +1,19 @@
 import numpy as np
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
+from scipy.stats import ttest_ind
 import pandas as pd
 
 class Estatiscas:
-    def __init__(self, data: pd.DataFrame, response_col: str, group_col: str, control: str, alpha=0.05):
+    def __init__(self, data: pd.DataFrame, group_col: str, fator_col: str, response_col: str, control: str, alpha=0.05):
         self.data = data
-        self.response_col = response_col
         self.group_col = group_col
+        self.fator_col = fator_col if fator_col else None
+        self.response_col = response_col
         self.control = control
         self.alpha = alpha
+
+    def run_t_test(self):
+        return run_t_test(self.data, self.group_col, self.fator_col, self.response_col)
 
     def run_dunnett(self):
         return run_test_dunnett(self.data, self.response_col, self.group_col, self.control, self.alpha)
@@ -19,7 +24,88 @@ class Estatiscas:
     def add_significance(self, dunnett_result):
         return add_significance(self.data, dunnett_result, self.response_col, self.group_col, self.control, self.alpha)
     
-def run_test_dunnett(data, response_col:str, group_col:str, control:str, alpha=0.05):
+def run_t_test(data: pd.DataFrame, group_col: str, fator_col: str, response_col: str) -> pd.DataFrame:
+    """
+    Para cada nível único de `fator_col`, faz um t-test entre as duas categorias de `group_col`.
+    Parâmetros:
+    - data: DataFrame contendo os dados.
+    - group_col: Nome da coluna com os grupos (categorias).
+    - fator_col: Nome da coluna com o fator (ex: 'time').
+    - response_col: Nome da coluna com os dados de resposta (ex: 'value').
+
+    Retorna um DataFrame com as colunas:
+      - fator_col
+      - group1, group2   (nomes das duas categorias)
+      - n1, n2           (tamanhos amostrais)
+      - t_stat, p_value
+      - significance     ("ns", "*", "**", "***")
+    """
+    results = []
+
+    if fator_col:
+        # garante ordem consistente de tempos (se quiser custom, ajuste esta linha)
+        fatores = sorted(data[fator_col].unique(), key=lambda x: float(x.rstrip('h')))
+        for f in fatores:
+            sub = data[data[fator_col] == f]
+            groups = sub[group_col].unique()
+            if len(groups) != 2:
+                continue  # pula se não houver exatamente 2 grupos
+            g1, g2 = groups
+            v1 = sub[sub[group_col] == g1][response_col]
+            v2 = sub[sub[group_col] == g2][response_col]
+            t_stat, p = ttest_ind(v1, v2, equal_var=False)
+            # monta notação de significância
+            if p < 0.001:
+                sig = '***'
+            elif p < 0.01:
+                sig = '**'
+            elif p < 0.05:
+                sig = '*'
+            else:
+                sig = 'ns'
+            results.append({
+                fator_col: f,
+                'group1': g1,
+                'group2': g2,
+                'n1': len(v1),
+                'n2': len(v2),
+                't_stat': t_stat,
+                'p_value': p,
+                'significance': sig
+            })
+
+    else:
+        # caso não tenha fator_col, faz t-test direto entre os grupos
+        groups = data[group_col].unique()
+        if len(groups) != 2:
+            raise ValueError("Para t-test sem fator_col, deve haver exatamente 2 grupos.")
+        g1, g2 = groups
+        v1 = data[data[group_col] == g1][response_col]
+        v2 = data[data[group_col] == g2][response_col]
+        t_stat, p = ttest_ind(v1, v2, equal_var=False)
+        # monta notação de significância
+        if p < 0.001:
+            sig = '***'
+        elif p < 0.01:
+            sig = '**'
+        elif p < 0.05:
+            sig = '*'
+        else:
+            sig = 'ns'
+        results.append({
+            group_col: 'Total',
+            'group1': g1,
+            'group2': g2,
+            'n1': len(v1),
+            'n2': len(v2),
+            't_stat': t_stat,
+            'p_value': p,
+            'significance': sig
+        })
+    return pd.DataFrame(results)
+
+    
+def run_test_dunnett(data: pd.DataFrame, response_col:str, group_col:str, control:str, alpha: float=0.05):
     """
     Teste de Dunnett para comparações múltiplas com um grupo controle.
     Parâmetros:
@@ -49,7 +135,7 @@ def run_test_dunnett(data, response_col:str, group_col:str, control:str, alpha=0
     
     return results, data[group_col].dropna().unique().tolist()
 
-def run_test_tukey(data, response_col:str, group_col:str, alpha=0.05):
+def run_test_tukey(data: pd.DataFrame, response_col:str, group_col:str, alpha: float=0.05):
     """
     Teste de Tukey para comparações múltiplas entre grupos.
     Parâmetros:
@@ -73,7 +159,7 @@ def run_test_tukey(data, response_col:str, group_col:str, alpha=0.05):
 
     return df_res
 
-def add_significance(data, dunnett_result, response_col:str, group_col:str, control:str, alpha=0.05):
+def add_significance(data: pd.DataFrame, dunnett_result, response_col:str, group_col:str, control:str, alpha: float=0.05):
     """    Adiciona estatísticas resumidas e significância aos resultados do teste de Dunnett.
     Parâmetros:
     - data: DataFrame contendo os dados originais.
@@ -112,7 +198,7 @@ def add_significance(data, dunnett_result, response_col:str, group_col:str, cont
     summary_stats['p_val'] = summary_stats['p_val'].round(4) 
     return summary_stats[[group_col, 'mean', 'SE', 'p_val', 'significance']]
 
-def add_significance_tukey(tukey_result, alpha=0.05):
+def add_significance_tukey(tukey_result, alpha: float=0.05):
     """
     Adiciona uma coluna de significância ao resultado do teste de Tukey.
     Parâmetros:
@@ -125,22 +211,37 @@ def add_significance_tukey(tukey_result, alpha=0.05):
     tukey_result['significance'] = tukey_result['p-adj'].apply(lambda p: "*" if p < alpha else "")
     return tukey_result
 
+def add_significance_ttest(data: pd.DataFrame, t_test_result: pd.DataFrame, response_col:str, group_col:str, fator_col:str, alpha: float = 0.05):
+    return
 
 if __name__ == "__main__":
     file_path = "L:/Projetos/Lab/Programas/R/Dados/supplementary_review.xlsx"
     data = pd.read_excel(file_path, sheet_name="fig1a")
 
-    results = run_test_dunnett(data, response_col='value', group_col='name', control='Col-0')
+    results, order = run_test_dunnett(data, response_col='value', group_col='name', control='Col-0')
     print("Resultados do teste de Dunnett:")
     print(results)
 
     results_tukey = run_test_tukey(data, response_col='value', group_col='name')
     print("Resultados do teste de Tukey:")
     print(results_tukey)
-
-    summary_stats = add_significance(data, results, 'value', 'name', 'Col-0')
-    print("Estatísticas resumidas com significância:")
+    summary_stats = add_significance(data, results, response_col='value', group_col='name', control='Col-0')
+    print("Estatísticas resumidas com significância Dunnett: ")
     print(summary_stats)
+    
+    data = pd.read_excel(file_path, sheet_name="fig7b")
+    print("Resultados do teste t:")
+    results_test_t = run_t_test(data, group_col='name', fator_col='time', response_col='value')
+    print(results_test_t)
+    summary_stats_t = add_significance_ttest(data, results_test_t, response_col='value', group_col='name', fator_col='time')
+    print("Estatísticas resumidas com significância T-test:")
+    print(summary_stats_t)
+
+    file_path = "dataframe.xlsx"
+    df = pd.read_excel(file_path, sheet_name="test_t_puro")
+    print("Resultados do teste t puro:")
+    results_test_t_puro = run_t_test(df, group_col='Treatment', fator_col=None, response_col='Values')
+    print(results_test_t_puro)
 
 
 
