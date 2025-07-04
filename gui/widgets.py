@@ -186,6 +186,9 @@ def build_frame_variaveis(main_window, frame, variaveis):
         response_col = ctk.StringVar(value=variaveis[len(variaveis)-1])
         response_menu = ctk.CTkOptionMenu(frame, variable=response_col, values=variaveis)
         response_menu.grid(row=3, column=3, padx=(0, 20))
+
+        fator_col = ctk.StringVar(value=None)  # Não é necessário fator_col 
+        
         group_col.trace_add("write", atualizar_controles)
         atualizar_controles()  # Inicializa ao criar
 
