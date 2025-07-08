@@ -112,10 +112,21 @@ def build_frame_variaveis(main_window, frame, variaveis):
     """
     # Adiciona menu de tratamentos disponíveis
     def atualizar_controles(*args):
-        """ Atualiza o menu de controles com base na coluna de tratamento selecionada.
-        Se a coluna não existir no DataFrame, remove o menu antigo e limpa a variável de controle.
-        """
         try:
+            # Destroi apenas se o widget ainda existir e não for None
+            if hasattr(main_window, "control_menu") and main_window.control_menu is not None:
+                try:
+                    main_window.control_menu.destroy()
+                except Exception:
+                    pass
+                main_window.control_menu = None
+            if hasattr(main_window, "control_label") and main_window.control_label is not None:
+                try:
+                    main_window.control_label.destroy()
+                except Exception:
+                    pass
+                main_window.control_label = None
+
             col = group_col.get()
             if hasattr(main_window, "df") and col in main_window.df.columns:
                 controls = main_window.df[col].dropna().unique().tolist()
@@ -129,10 +140,8 @@ def build_frame_variaveis(main_window, frame, variaveis):
                 main_window.control_label = None
                 main_window.control_menu = None
         except Exception as e:
-            if hasattr(main_window, "control_menu"):
-                main_window.control_menu.destroy()
-            if hasattr(main_window, "control_label"):
-                main_window.control_label.destroy()
+            # Evita erro duplo de destruição
+            pass
 
     # Limpa o frame antes de adicionar novos widgets
     for widget in frame.winfo_children():
@@ -146,7 +155,7 @@ def build_frame_variaveis(main_window, frame, variaveis):
         ctk.CTkLabel(frame, text="Selecione um teste estatístico.").grid(row=3, column=0, columnspan=4, padx=10, pady=(10, 5))
         return
 
-    if main_window.testes_var.get() == "t-test" and len(variaveis) >= 3:
+    if main_window.testes_var.get() == "t-test" or main_window.testes_var.get() == "tukey" and len(variaveis) >= 3:
         ctk.CTkLabel(frame, text="*Coluna dos grupos:").grid(row=3, column=0, padx=10, pady=(10, 5), sticky="e")
         group_col = ctk.StringVar(value=variaveis[0] if variaveis else "")
         group_menu = ctk.CTkOptionMenu(frame, variable=group_col, values=variaveis)
@@ -162,7 +171,7 @@ def build_frame_variaveis(main_window, frame, variaveis):
         response_menu = ctk.CTkOptionMenu(frame, variable=response_col, values=variaveis)
         response_menu.grid(row=3, column=5, padx=(0, 20))
 
-    elif main_window.testes_var.get() == "t-test": 
+    elif main_window.testes_var.get() == "t-test" or main_window.testes_var.get() == "tukey": 
         ctk.CTkLabel(frame, text="*Coluna dos grupos:").grid(row=3, column=0, padx=10, pady=(10, 5), sticky="e")
         group_col = ctk.StringVar(value=variaveis[0] if variaveis else "")
         group_menu = ctk.CTkOptionMenu(frame, variable=group_col, values=variaveis)

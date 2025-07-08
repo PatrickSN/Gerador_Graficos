@@ -4,21 +4,17 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib.ticker as ticker
 
-from tkinter import filedialog
+from tkinter import filedialog, ttk
+from tkinter import messagebox
+from tkinter import StringVar
+from tkinter import TclError
 
 from gui.widgets import *
 from gui.estatistica import *
 
-# acesso ao value e testes
-# valor_value = self.value_var.get()
-# tipo_teste = self.testes_var.get()
 
 class MainWindow(ctk.CTk):
     def __init__(self):
-        """ Inicializa a janela principal da aplicação.
-        Configura o título, tamanho mínimo e cria os frames principais.
-        Cria os frames esquerdo e direito, além do frame da tabela.
-        """
         super().__init__()
 
         self.title("Análise de Dados com Testes Estatísticos")
@@ -29,18 +25,36 @@ class MainWindow(ctk.CTk):
         self.subtitle_entry = None
         self.checkboxes = []
 
-        # Variáveis de frames
-        self.main_frame = ctk.CTkFrame(self)
-        self.left_frame = create_left_panel(
-            self, self.main_frame, self.upload_excel
-        )
-        self.right_frame = create_right_panel(
-            self, self.main_frame, self.clear_entries, self.build_grafico
-        )
-        self.table_frame, self.table_scrollable = create_table_frame(self)
+        # Frame principal com abas (Notebook)
+        self.tabview = ttk.Notebook(self)
+        self.tabview.pack(fill="both", expand=True, padx=20, pady=20)
 
-        # Posição dos frames
-        self.main_frame.pack(padx=20, pady=20, fill="both", expand=True)
+        # Aba 1: Análise de dados
+        self.tab_analise = ctk.CTkFrame(self.tabview)
+        self.tabview.add(self.tab_analise, text="Gerador")
+        self.setup_analysis_tab(self.tab_analise)
+
+        # Aba 2: Configurações (placeholder)
+        self.tab_configuracoes = ctk.CTkFrame(self.tabview)
+        self.tabview.add(self.tab_configuracoes, text="Configurações")
+        ctk.CTkLabel(self.tab_configuracoes, text="Configurações aparecerão aqui").pack(padx=20, pady=20)
+        """
+        # Aba 3: Sobre (placeholder)
+        self.tab_sobre = ctk.CTkFrame(self.tabview)
+        self.tabview.add(self.tab_sobre, text="Sobre")
+        ctk.CTkLabel(self.tab_sobre, text="Aplicativo de análise estatística desenvolvido com tkinter e customtkinter.\nDesenvolvido por ...").pack(padx=20, pady=20)"""
+
+    def setup_analysis_tab(self, parent):
+        """
+        Monta os elementos da aba de análise principal.
+        """
+        self.main_frame = ctk.CTkFrame(parent)
+        self.main_frame.pack(fill="both", expand=True)
+
+        self.left_frame = create_left_panel(self, self.main_frame, self.upload_excel)
+        self.right_frame = create_right_panel(self, self.main_frame, self.clear_entries, self.build_grafico)
+        self.table_frame, self.table_scrollable = create_table_frame(parent)
+
         self.left_frame.grid(row=0, column=0, padx=10, pady=10, sticky="n")
         self.right_frame.grid(row=0, column=1, padx=10, pady=10, sticky="n")
         self.table_frame.pack(padx=20, pady=(0, 20), fill="both", expand=True)
@@ -213,7 +227,7 @@ class MainWindow(ctk.CTk):
         # Salvar figura
         plt.savefig("grafico2.tiff", format="tiff", bbox_inches="tight")
         plt.tight_layout()
-        plt.show(block=False)
+        plt.show()
         
 
     def clear_entries(self):

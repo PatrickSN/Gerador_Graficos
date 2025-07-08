@@ -2,6 +2,7 @@ import numpy as np
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from scipy.stats import ttest_ind
 import pandas as pd
+import re
 
 class Estatiscas:
     def __init__(self, data: pd.DataFrame, group_col: str, fator_col: str, response_col: str, control: str, alpha=0.05):
@@ -40,11 +41,19 @@ def run_t_test(data: pd.DataFrame, group_col: str, fator_col: str, response_col:
       - t_stat, p_value
       - significance     ("ns", "*", "**", "***")
     """
+    def fator_sort_key(x):
+        # Tenta extrair o primeiro número da string
+        match = re.search(r'[-+]?\d*\.\d+|\d+', str(x))
+        if match:
+            return float(match.group())
+        else:
+            # Se não houver número, retorna a string em minúsculo para ordenação alfabética
+            return str(x).lower()
     results = []
 
     if fator_col:
         # garante ordem consistente de tempos (se quiser custom, ajuste esta linha)
-        fatores = sorted(data[fator_col].unique(), key=lambda x: float(x.rstrip('h')))
+        fatores = data[fator_col].unique()
         for f in fatores:
             sub = data[data[fator_col] == f]
             groups = sub[group_col].unique()
@@ -172,8 +181,10 @@ def add_significance(data: pd.DataFrame, dunnett_result, response_col:str, group
     - DataFrame com as estatísticas resumidas e significância.
     """
     # Calcular estatísticas resumidas
-    summary_stats = data.groupby(group_col)[response_col].agg(['mean', 'std', 'count']).reset_index()
+    summary_stats = data.groupby(group_col, observed=False)[response_col].agg(['mean', 'std', 'count']).reset_index()
     summary_stats['SE'] = summary_stats['std'] / np.sqrt(summary_stats['count'])
+    print("Estatísticas resumidas.......:")
+    print(summary_stats)
 
     significance = []
     p_val = []
@@ -212,25 +223,49 @@ def add_significance_tukey(tukey_result, alpha: float=0.05):
     return tukey_result
 
 def add_significance_ttest(data: pd.DataFrame, t_test_result: pd.DataFrame, response_col:str, group_col:str, fator_col:str, alpha: float = 0.05):
-    return
+    """    Adiciona estatísticas resumidas e significância aos resultados do teste t.
+    Parâmetros:
+    - data: DataFrame contendo os dados originais.
+    - t_test_result: DataFrame com os resultados do teste t.
+    - response_col: Nome da coluna com os dados de resposta.
+    - group_col: Nome da coluna com os grupos.
+    - fator_col: Nome da coluna com o fator (ex: 'time').
+    - alpha: Nível de significância (default é 0.05).
+    Retorna:
+    - DataFrame com as estatísticas resumidas e significância.
+    """ 
+    # Calcular estatísticas resumidas
+
+    if fator_col:
+        summary_stats = data.groupby([fator_col, group_col], observed=False)[response_col].agg(['mean', 'std', 'count']).reset_index()
+        summary_stats['SE'] = summary_stats['std'] / np.sqrt(summary_stats['count'])
+
+    else:
+        summary_stats = add_significance(data, t_test_result, response_col, group_col, control=t_test_result["group1"], alpha=alpha)
+
+    return summary_stats
+
+    significance = []
+    p_val = []
+
+
 
 if __name__ == "__main__":
     file_path = "L:/Projetos/Lab/Programas/R/Dados/supplementary_review.xlsx"
     data = pd.read_excel(file_path, sheet_name="fig1a")
-
     results, order = run_test_dunnett(data, response_col='value', group_col='name', control='Col-0')
-    print("Resultados do teste de Dunnett:")
+    print("\nResultados do teste de Dunnett:")
     print(results)
-
-    results_tukey = run_test_tukey(data, response_col='value', group_col='name')
-    print("Resultados do teste de Tukey:")
-    print(results_tukey)
     summary_stats = add_significance(data, results, response_col='value', group_col='name', control='Col-0')
     print("Estatísticas resumidas com significância Dunnett: ")
     print(summary_stats)
-    
+    """
+    results_tukey = run_test_tukey(data, response_col='value', group_col='name')
+    print("\nResultados do teste de Tukey:")
+    print(results_tukey)"""
+
     data = pd.read_excel(file_path, sheet_name="fig7b")
-    print("Resultados do teste t:")
+    print("\nResultados do teste t:")
     results_test_t = run_t_test(data, group_col='name', fator_col='time', response_col='value')
     print(results_test_t)
     summary_stats_t = add_significance_ttest(data, results_test_t, response_col='value', group_col='name', fator_col='time')
@@ -239,9 +274,12 @@ if __name__ == "__main__":
 
     file_path = "dataframe.xlsx"
     df = pd.read_excel(file_path, sheet_name="test_t_puro")
-    print("Resultados do teste t puro:")
+    print("\nResultados do teste t puro:")
     results_test_t_puro = run_t_test(df, group_col='Treatment', fator_col=None, response_col='Values')
     print(results_test_t_puro)
-
+    """
+    summary_stats_t_puro = add_significance_ttest(df, results_test_t, response_col='value', group_col='name', fator_col=None)
+    print("Estatísticas resumidas com significância T-test-puro:")
+    print(summary_stats_t)"""
 
 
