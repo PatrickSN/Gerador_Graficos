@@ -69,15 +69,15 @@ class MainWindow(ctk.CTk):
         )
         if file_path:
             try:
-                excel_file = pd.ExcelFile(file_path)
-                sheets = excel_file.sheet_names
+                self.excel_file = pd.ExcelFile(file_path)
+                sheets = self.excel_file.sheet_names
 
                 # Atualiza o OptionMenu com as abas
                 self.sheet_menu.configure(values=sheets)
                 self.sheet_var.set(sheets[0])  # Seleciona a primeira aba por padrão
                 
                 # Carrega os dados da aba selecionada
-                self.load_selected_sheet(excel_file)
+                self.load_selected_sheet(self.excel_file)
 
                 # retorna os valores da 1 coluna com excecao da linha 1
 
@@ -87,7 +87,7 @@ class MainWindow(ctk.CTk):
 
                 # Associa mudança de aba ao carregamento dos dados
                 def on_sheet_change(choice):
-                    self.load_selected_sheet(excel_file)
+                    self.load_selected_sheet(self.excel_file)
                     build_frame_variaveis(self, self.frame_variaveis, self.df.columns.tolist())
 
                 self.sheet_var.trace_add("write", lambda *args: on_sheet_change(self.sheet_var.get()))
@@ -157,6 +157,15 @@ class MainWindow(ctk.CTk):
             )
             # Adiciona significância
 
+            results, order_colum = add_significance_ttest(
+                self.df,
+                results,
+                response_col=self.response_col.get(),
+                group_col=self.group_col.get(),
+                fator_col=self.fator_col.get(),
+                alpha=self.value_var.get()
+            )
+
         elif self.testes_var.get() == "tukey":
             # Executa o teste de Tukey
             results = run_test_tukey(
@@ -175,7 +184,7 @@ class MainWindow(ctk.CTk):
         
         # Exibe os resultados na tabela
         display_table(self.table_scrollable, results)
-        return results, order_colum if self.testes_var.get() == "dunnett" else None
+        return results, order_colum if self.testes_var.get() == "dunnett" or self.testes_var.get() == "t-test" else None
 
     def build_grafico(self):
         """ Gera o gráfico com base nas estatísticas calculadas e exibe na janela.
@@ -191,43 +200,148 @@ class MainWindow(ctk.CTk):
             display_table(self.table_scrollable, pd.DataFrame({"": ["Preencha todos os campos obrigatórios."]}))
             return"""
         
-        summary_stats, order = self.gerar_estatisticas()
 
         # Configurações iniciais
         plt.rcParams['font.family'] = 'Arial'
         plt.rcParams['font.size'] = 9
 
-        # Configurar o plot
-        plt.figure(figsize=(8/2.54, 8/2.54), dpi=300)  # Converter cm para polegadas
-        ax = plt.gca()
-        # Barras
-        sns.barplot(x=self.group_col.get(), y='mean', data=summary_stats, 
-                    errorbar='se', capsize=0.2, 
-                    width=0.3, alpha=0.8, ax=ax)
-        # Pontos individuais
-        sns.stripplot(x=self.group_col.get(), y=self.response_col.get(), data=self.df, 
-                    jitter=0.1, size=2, color='black', ax=ax)
-        
-        # Elementos estéticos
-        y_max = (summary_stats['mean'] + summary_stats['SE']).max()
-        ax.set_xticklabels(order, rotation=45, ha='right')
-        ax.set(xlabel=self.eixoX_entry.get(), ylabel=self.eixoY_entry.get(), title=self.title_entry.get())
-        y_espaco = 0.2 * y_max * 1.2
-        ax.yaxis.set_major_locator(ticker.MultipleLocator(y_espaco))
-        ax.set_ylim(0, y_max * 1.2)
+        if self.testes_var.get() == "dunnett":
+            summary_stats, order = self.gerar_estatisticas()
+            #lembrar de remover partes redundantes do código
+            # Configurar o plot
+            plt.figure(figsize=(8/2.54, 8/2.54), dpi=300)  # Converter cm para polegadas
+            ax = plt.gca()
+            # Barras
+            sns.barplot(x=self.group_col.get(), y='mean', data=summary_stats, 
+                        errorbar='se', capsize=0.2, 
+                        width=0.3, alpha=0.8, ax=ax, order=order)
+            # Pontos individuais
+            sns.stripplot(x=self.group_col.get(), y=self.response_col.get(), data=self.df, 
+                        jitter=0.1, size=2, color='black', ax=ax)
+            
+            # Elementos estéticos# busca a maior media para ajustar o limite do eixo y
+            y_max = summary_stats['mean'].max()
+            ax.set_ylim(0, y_max * 1.2)
+            ax.set_xticks(range(len(order)))  # Garante que o número de ticks corresponde ao número de labels
+            ax.set_xticklabels(order, rotation=45, ha='right')
+            ax.set(xlabel=self.eixoX_entry.get(), ylabel=self.eixoY_entry.get(), title=self.title_entry.get())
+            y_espaco = 0.2 * y_max * 1.2
+            ax.yaxis.set_major_locator(ticker.MultipleLocator(y_espaco))
+            ax.set_ylim(0, y_max * 1.2)
 
-        # Adicionar significância
-        for i, row in summary_stats.iterrows():
-            y_pos = row['mean'] + row['SE']
-            ax.text(i, y_pos, row['significance'], ha='center', va='bottom', size=12)
+            # Adicionar significância
+            for i, row in summary_stats.iterrows():
+                y_pos = row['mean'] + row['SE']
+                # Adiciona barra de erro
+                ax.errorbar(
+                    x=i,
+                    y=row['mean'],
+                    yerr=row['SE'],
+                    fmt='none',           # Não desenha marcador, só a barra de erro
+                    c='black',
+                    capsize=5
+                )
+                # Adiciona o texto de significância
+                ax.text(i, y_pos, row['significance'], ha='center', va='bottom', size=12)
 
-        # Remover bordas
-        sns.despine()
+            # Remover bordas
+            sns.despine()
 
-        # Salvar figura
-        plt.savefig("grafico2.tiff", format="tiff", bbox_inches="tight")
-        plt.tight_layout()
-        plt.show()
+            # Salvar figura
+            plt.savefig("grafico2.tiff", format="tiff", bbox_inches="tight")
+            plt.tight_layout()
+            plt.show()
+
+        elif self.testes_var.get() == "t-test":
+            summary_stats, order = self.gerar_estatisticas()
+            
+            sig_map = summary_stats.set_index(self.fator_col.get())['significance'].to_dict()
+            # Configurar o plot
+            fig, ax = plt.subplots(figsize=(8/2.54, 8/2.54), dpi=300)  # Converter cm para polegadas
+            # Gráfico de barras
+            if "control" or "Col-0" in order:
+                ordens = order
+            else:
+                ordens = sorted(summary_stats[self.fator_col.get()].unique(), key=fator_sort_key)
+            sns.barplot(
+                data=summary_stats,
+                x=self.fator_col.get(),
+                y="mean",
+                hue=self.group_col.get(),
+                ax=ax,
+                capsize=0.2,
+                palette="Set2",
+                order=ordens
+                )
+            # Pontos individuais
+            sns.stripplot(
+                        x=self.fator_col.get(),
+                        y=self.response_col.get(),
+                        data=self.df,  
+                        hue=self.group_col.get(),      # Adicione o mesmo hue do barplot
+                        order=ordens,                  # Use a mesma ordem do barplot
+                        dodge=True,     # Para separar os pontos dos grupos
+                        jitter=0.1,
+                        size=2,
+                        palette='dark:black',
+                        ax=ax
+                        )
+
+            # busca a maior media para ajustar o limite do eixo y
+            y_max = summary_stats['mean'].max()
+            ax.set_ylim(0, y_max * 1.2)
+
+            # Adiciona barras de erro e asteriscos
+            names = summary_stats[self.group_col.get()].unique()
+
+            for i, row in summary_stats.iterrows():
+                fator = row[self.fator_col.get()]
+                grupo = row[self.group_col.get()]
+                media = row['mean']
+                erro = row['SE']
+                idx_fator = ordens.index(fator)
+                deslocamento = -0.2 if grupo == names[0] else 0.2
+                x_pos = idx_fator + deslocamento
+                ax.errorbar(x=x_pos, y=media, yerr=erro, fmt='none', c='black', capsize=5)
+
+                # Apenas um asterisco por fator (acima da barra mais alta)
+                """if grupo == names[1] and fator in sig_map:
+                    sig = sig_map[fator]
+                    if sig != 'ns':
+                        altura = summary_stats[(summary_stats[self.fator_col.get()] == fator)]["mean"].max()
+                        ax.text(idx_fator, altura + 1, sig, ha='center', va='bottom', fontsize=12, fontweight='bold')"""
+
+            for fator in ordens:
+                # Verifica se há significância para esse fator
+                sig = sig_map.get(fator, "")
+                if sig and sig != 'ns':
+                    # Pega as posições das barras no eixo x
+                    idx_fator = ordens.index(fator)
+                    x0 = idx_fator - 0.2
+                    x1 = idx_fator + 0.2
+                    y_linha = y_max * 1.1  # ajuste a altura do traço conforme necessário
+
+                    # Desenha o traço
+                    ax.plot([x0, x1], [y_linha, y_linha], c='black', linewidth=1.5)
+                    # Adiciona o asterisco no meio do traço
+                    ax.text(idx_fator, y_linha * 1.0025, sig, ha='center', va='bottom', fontsize=14, fontweight='bold')
+
+            # Ajustes visuais
+            y_legenda = y_max * 1.1 * 1.02
+            y_legenda_rel = y_legenda / (y_max)
+
+            ax.set_ylabel(self.eixoY_entry.get())
+            ax.set_xlabel(self.eixoX_entry.get())
+            handles, labels = ax.get_legend_handles_labels()
+            ax.legend(handles[:len(names)], labels[:len(names)], loc="upper center", bbox_to_anchor=(0.5, y_legenda_rel), ncol=2, frameon=False)
+            plt.tight_layout()
+
+            # Remover bordas
+            sns.despine()
+
+            # Salva a figura
+            plt.savefig("grafico2.tiff", format="tiff", bbox_inches="tight")
+            plt.show()
         
 
     def clear_entries(self):

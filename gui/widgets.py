@@ -50,6 +50,7 @@ def create_left_panel(main_window, parent, upload_command):
     def up_ao_mudar(*args):
         if hasattr(main_window, "df"):
             build_frame_variaveis(main_window, main_window.frame_variaveis, main_window.df.columns.tolist())
+            main_window.load_selected_sheet(main_window.excel_file)
 
     testes_var.trace_add("write", up_ao_mudar)
     value_var.trace_add("write", up_ao_mudar)

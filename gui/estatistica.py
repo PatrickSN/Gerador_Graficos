@@ -2,7 +2,6 @@ import numpy as np
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from scipy.stats import ttest_ind
 import pandas as pd
-import re
 
 class Estatiscas:
     def __init__(self, data: pd.DataFrame, group_col: str, fator_col: str, response_col: str, control: str, alpha=0.05):
@@ -25,6 +24,16 @@ class Estatiscas:
     def add_significance(self, dunnett_result):
         return add_significance(self.data, dunnett_result, self.response_col, self.group_col, self.control, self.alpha)
     
+def fator_sort_key(x):
+    import re
+    # Tenta extrair o primeiro número da string
+    match = re.search(r'[-+]?\d*\.\d+|\d+', str(x))
+    if match:
+        return (0, float(match.group()))
+    else:
+        # Se não houver número, retorna a string em minúsculo para ordenação alfabética
+        return (1, str(x).lower())
+    
 def run_t_test(data: pd.DataFrame, group_col: str, fator_col: str, response_col: str) -> pd.DataFrame:
     """
     Para cada nível único de `fator_col`, faz um t-test entre as duas categorias de `group_col`.
@@ -41,14 +50,7 @@ def run_t_test(data: pd.DataFrame, group_col: str, fator_col: str, response_col:
       - t_stat, p_value
       - significance     ("ns", "*", "**", "***")
     """
-    def fator_sort_key(x):
-        # Tenta extrair o primeiro número da string
-        match = re.search(r'[-+]?\d*\.\d+|\d+', str(x))
-        if match:
-            return float(match.group())
-        else:
-            # Se não houver número, retorna a string em minúsculo para ordenação alfabética
-            return str(x).lower()
+    
     results = []
 
     if fator_col:
@@ -183,8 +185,6 @@ def add_significance(data: pd.DataFrame, dunnett_result, response_col:str, group
     # Calcular estatísticas resumidas
     summary_stats = data.groupby(group_col, observed=False)[response_col].agg(['mean', 'std', 'count']).reset_index()
     summary_stats['SE'] = summary_stats['std'] / np.sqrt(summary_stats['count'])
-    print("Estatísticas resumidas.......:")
-    print(summary_stats)
 
     significance = []
     p_val = []
@@ -222,31 +222,31 @@ def add_significance_tukey(tukey_result, alpha: float=0.05):
     tukey_result['significance'] = tukey_result['p-adj'].apply(lambda p: "*" if p < alpha else "")
     return tukey_result
 
-def add_significance_ttest(data: pd.DataFrame, t_test_result: pd.DataFrame, response_col:str, group_col:str, fator_col:str, alpha: float = 0.05):
-    """    Adiciona estatísticas resumidas e significância aos resultados do teste t.
-    Parâmetros:
-    - data: DataFrame contendo os dados originais.
-    - t_test_result: DataFrame com os resultados do teste t.
-    - response_col: Nome da coluna com os dados de resposta.
-    - group_col: Nome da coluna com os grupos.
-    - fator_col: Nome da coluna com o fator (ex: 'time').
-    - alpha: Nível de significância (default é 0.05).
-    Retorna:
-    - DataFrame com as estatísticas resumidas e significância.
-    """ 
-    # Calcular estatísticas resumidas
+def add_significance_ttest(data: pd.DataFrame, t_test_result: pd.DataFrame, response_col: str, group_col: str, fator_col: str, alpha: float = 0.05):
+    """
+    Retorna estatísticas resumidas e significância no padrão Dunnett para t-test.
+    """
+    # Estatísticas resumidas
+    summary_stats = data.groupby([fator_col, group_col], observed=False)[response_col].agg(['mean', 'std', 'count']).reset_index()
+    summary_stats['SE'] = summary_stats['std'] / np.sqrt(summary_stats['count'])
 
-    if fator_col:
-        summary_stats = data.groupby([fator_col, group_col], observed=False)[response_col].agg(['mean', 'std', 'count']).reset_index()
-        summary_stats['SE'] = summary_stats['std'] / np.sqrt(summary_stats['count'])
-
-    else:
-        summary_stats = add_significance(data, t_test_result, response_col, group_col, control=t_test_result["group1"], alpha=alpha)
-
-    return summary_stats
-
+    p_val = t_test_result.set_index(fator_col)['p_value'].to_dict()
     significance = []
-    p_val = []
+    for f in summary_stats[fator_col]:
+        if f in p_val:
+            p = p_val[f]
+            if p < alpha:
+                significance.append("*")
+            else:
+                significance.append("")
+        else:
+            significance.append("")
+
+    summary_stats['significance'] = significance
+
+    return summary_stats[[fator_col, group_col, 'mean', 'SE', 'significance']], data[fator_col].dropna().unique().tolist()
+
+    
 
 
 
@@ -264,9 +264,9 @@ if __name__ == "__main__":
     print("\nResultados do teste de Tukey:")
     print(results_tukey)"""
 
-    data = pd.read_excel(file_path, sheet_name="fig7b")
+    data = pd.read_excel(file_path, sheet_name="fig7c")
     print("\nResultados do teste t:")
-    results_test_t = run_t_test(data, group_col='name', fator_col='time', response_col='value')
+    results_test_t, order = run_t_test(data, group_col='name', fator_col='time', response_col='value')
     print(results_test_t)
     summary_stats_t = add_significance_ttest(data, results_test_t, response_col='value', group_col='name', fator_col='time')
     print("Estatísticas resumidas com significância T-test:")
