@@ -22,7 +22,7 @@ class Estatiscas:
         return run_test_tukey(self.data, self.response_col, self.group_col, self.alpha)
 
     def add_significance(self, dunnett_result):
-        return add_significance(self.data, dunnett_result, self.response_col, self.group_col, self.control, self.alpha)
+        return add_significance_dunnet(self.data, dunnett_result, self.response_col, self.group_col, self.control, self.alpha)
     
 def fator_sort_key(x):
     import re
@@ -170,7 +170,7 @@ def run_test_tukey(data: pd.DataFrame, response_col:str, group_col:str, alpha: f
 
     return df_res
 
-def add_significance(data: pd.DataFrame, dunnett_result, response_col:str, group_col:str, control:str, alpha: float=0.05):
+def add_significance_dunnet(data: pd.DataFrame, dunnett_result, response_col:str, group_col:str, control:str, alpha: float=0.05):
     """    Adiciona estatísticas resumidas e significância aos resultados do teste de Dunnett.
     Parâmetros:
     - data: DataFrame contendo os dados originais.
@@ -253,17 +253,23 @@ def add_significance_ttest(data: pd.DataFrame, t_test_result: pd.DataFrame, resp
 if __name__ == "__main__":
     file_path = "L:/Projetos/Lab/Programas/R/Dados/supplementary_review.xlsx"
     data = pd.read_excel(file_path, sheet_name="fig1a")
+    
+    """
     results, order = run_test_dunnett(data, response_col='value', group_col='name', control='Col-0')
     print("\nResultados do teste de Dunnett:")
     print(results)
-    summary_stats = add_significance(data, results, response_col='value', group_col='name', control='Col-0')
+    summary_stats = add_significance_dunnet(data, results, response_col='value', group_col='name', control='Col-0')
     print("Estatísticas resumidas com significância Dunnett: ")
-    print(summary_stats)
-    """
+    print(summary_stats)"""
+
     results_tukey = run_test_tukey(data, response_col='value', group_col='name')
     print("\nResultados do teste de Tukey:")
-    print(results_tukey)"""
+    print(results_tukey)
+    summary_stats_tukey = add_significance_tukey(results_tukey, alpha=0.05)
+    print("Estatísticas resumidas com significância Tukey:")
+    print(summary_stats_tukey)
 
+    """
     data = pd.read_excel(file_path, sheet_name="fig7c")
     print("\nResultados do teste t:")
     results_test_t, order = run_t_test(data, group_col='name', fator_col='time', response_col='value')
@@ -277,7 +283,6 @@ if __name__ == "__main__":
     print("\nResultados do teste t puro:")
     results_test_t_puro = run_t_test(df, group_col='Treatment', fator_col=None, response_col='Values')
     print(results_test_t_puro)
-    """
     summary_stats_t_puro = add_significance_ttest(df, results_test_t, response_col='value', group_col='name', fator_col=None)
     print("Estatísticas resumidas com significância T-test-puro:")
     print(summary_stats_t)"""

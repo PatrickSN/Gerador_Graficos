@@ -31,12 +31,12 @@ class MainWindow(ctk.CTk):
 
         # Aba 1: Análise de dados
         self.tab_analise = ctk.CTkFrame(self.tabview)
-        self.tabview.add(self.tab_analise, text="Gerador")
+        self.tabview.add(self.tab_analise, text="Generate")
         self.setup_analysis_tab(self.tab_analise)
 
         # Aba 2: Configurações (placeholder)
         self.tab_configuracoes = ctk.CTkFrame(self.tabview)
-        self.tabview.add(self.tab_configuracoes, text="Configurações")
+        self.tabview.add(self.tab_configuracoes, text="Settings")
         ctk.CTkLabel(self.tab_configuracoes, text="Configurações aparecerão aqui").pack(padx=20, pady=20)
         """
         # Aba 3: Sobre (placeholder)
@@ -128,7 +128,7 @@ class MainWindow(ctk.CTk):
             )
             
             # Adiciona estatísticas resumidas e significância
-            results = add_significance(
+            results = add_significance_dunnet(
                 self.df,
                 results,
                 response_col=self.response_col.get(),
@@ -214,10 +214,10 @@ class MainWindow(ctk.CTk):
             # Barras
             sns.barplot(x=self.group_col.get(), y='mean', data=summary_stats, 
                         errorbar='se', capsize=0.2, 
-                        width=0.3, alpha=0.8, ax=ax, order=order)
+                        width=0.3, alpha=0.8, ax=ax, order=order, linewidth=1)
             # Pontos individuais
-            sns.stripplot(x=self.group_col.get(), y=self.response_col.get(), data=self.df, 
-                        jitter=0.1, size=2, color='black', ax=ax)
+            sns.stripplot(x=self.group_col.get(), y=self.response_col.get(), data=self.df, hue=self.group_col.get(),  
+                        jitter=0.1, size=2, palette='dark:black', ax=ax, legend=False)
             
             # Elementos estéticos# busca a maior media para ajustar o limite do eixo y
             y_max = summary_stats['mean'].max()
@@ -239,7 +239,8 @@ class MainWindow(ctk.CTk):
                     yerr=row['SE'],
                     fmt='none',           # Não desenha marcador, só a barra de erro
                     c='black',
-                    capsize=5
+                    capsize=5,
+                    linewidth=1
                 )
                 # Adiciona o texto de significância
                 ax.text(i, y_pos, row['significance'], ha='center', va='bottom', size=12)
@@ -248,7 +249,7 @@ class MainWindow(ctk.CTk):
             sns.despine()
 
             # Salvar figura
-            plt.savefig("grafico2.tiff", format="tiff", bbox_inches="tight")
+            plt.savefig("grafico1.tiff", format="tiff", bbox_inches="tight")
             plt.tight_layout()
             plt.show()
 
@@ -302,7 +303,7 @@ class MainWindow(ctk.CTk):
                 idx_fator = ordens.index(fator)
                 deslocamento = -0.2 if grupo == names[0] else 0.2
                 x_pos = idx_fator + deslocamento
-                ax.errorbar(x=x_pos, y=media, yerr=erro, fmt='none', c='black', capsize=5)
+                ax.errorbar(x=x_pos, y=media, yerr=erro, fmt='none', c='black', capsize=5, linewidth=1)
 
                 # Apenas um asterisco por fator (acima da barra mais alta)
                 """if grupo == names[1] and fator in sig_map:
@@ -343,6 +344,68 @@ class MainWindow(ctk.CTk):
             plt.savefig("grafico2.tiff", format="tiff", bbox_inches="tight")
             plt.show()
         
+        elif self.testes_var.get() == "tukey":
+            tukey_result, order = self.gerar_estatisticas()
+            # Calcula média e erro padrão por genotype
+            estatisticas = self.df.groupby(self.group_col.get(), observed=False)[self.response_col.get()].agg(['mean', 'std', 'count']).reset_index()
+            estatisticas['SE'] = estatisticas['std'] / np.sqrt(estatisticas['count'])
+
+            # Determina letras de significância com base nas comparações
+            # Inicializa cada genotype com uma letra única
+            genotypes = estatisticas[self.group_col.get()].tolist()
+            letras = {g: set([chr(97 + i)]) for i, g in enumerate(genotypes)}  # a, b, c, ...
+
+            # Remove letras de genotypes que não diferem entre si
+            for _, row in tukey_result.iterrows():
+                g1, g2 = row['group1'], row['group2']
+                p = row['p-adj']
+                if p >= self.value_var.get():
+                    # Unifica os conjuntos de letras
+                    uniao = letras[g1] | letras[g2]
+                    letras[g1] = letras[g2] = uniao
+
+            # Converte sets em strings (ex: {'a', 'b'} -> 'ab')
+            estatisticas['letra'] = estatisticas[self.group_col.get()].map(lambda g: ''.join(sorted(letras[g])))
+
+            # Gráfico
+            fig, ax = plt.subplots(figsize=(8/2.54, 8/2.54), dpi=300)  # Converter cm para polegadas
+            sns.barplot(
+                        data=estatisticas,
+                        x=self.group_col.get(),
+                        y="mean",
+                        hue=self.group_col.get(),   # Adicione hue igual ao x
+                        ax=ax,
+                        palette="Set2",
+                        capsize=0.1,
+                        legend=False                # Para não duplicar a legenda
+                        )
+
+            # Pontos individuais
+            sns.stripplot(x=self.group_col.get(), y=self.response_col.get(), data=self.df, hue=self.group_col.get(), 
+                        jitter=0.1, size=2, palette='dark:black', ax=ax, legend=False)
+
+            # Adiciona barras de erro e letras de significância
+            for i, row in estatisticas.iterrows():
+                x = i
+                y = row['mean']
+                se = row['SE']
+                letra = row['letra']
+                ax.errorbar(x=x, y=y, yerr=se, fmt='none', c='black', capsize=5, linewidth=1)
+                ax.text(x, y + se + 0.1, letra, ha='center', va='bottom', fontsize=9)
+
+            # Remover bordas
+            sns.despine()
+
+            # Ajustes visuais
+            ax.set_ylabel(self.eixoY_entry.get())
+            ax.set_xlabel(self.eixoX_entry.get())
+            ax.set_title(self.title_entry.get())
+            plt.tight_layout()
+
+            # Salva a figura
+            plt.savefig("grafico3.tiff", format="tiff", bbox_inches="tight")
+            plt.show()
+
 
     def clear_entries(self):
         """ Limpa todas as entradas e widgets da janela.

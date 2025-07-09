@@ -27,3 +27,7 @@ Thumbs.db
 # Imagens grandes que não precisam ser versionadas
 *.tiff
 *.png
+
+# Arquivos de teste
+*.test.py
+
