@@ -15,9 +15,9 @@ def create_left_panel(main_window, parent, upload_command):
     frame = ctk.CTkFrame(parent)
 
     # Grupo de seleção de planilha
-    ctk.CTkButton(frame, text="Upload de planilha excel", command=upload_command).grid(row=0, column=0, pady=(10, 5))
+    ctk.CTkButton(frame, text="Upload sheet", command=upload_command).grid(row=0, column=0, pady=(10, 5))
 
-    ctk.CTkLabel(frame, text="*Selecione a Aba:").grid(row=0, column=1, padx=10, pady=(10, 5), sticky="e")
+    ctk.CTkLabel(frame, text="Select table:").grid(row=0, column=1, padx=10, pady=(10, 5), sticky="e")
 
     sheet_var = ctk.StringVar(value="")
     sheet_menu = ctk.CTkOptionMenu(frame, variable=sheet_var, values=[""])
@@ -25,7 +25,7 @@ def create_left_panel(main_window, parent, upload_command):
 
 
     # Grupo p.value
-    ctk.CTkLabel(frame, text="*Alpha:").grid(row=1, column=0, padx=10, pady=5, sticky="e")
+    ctk.CTkLabel(frame, text="p_value:").grid(row=1, column=0, padx=10, pady=5, sticky="e")
     value_var = ctk.DoubleVar(value=0.05)
     rb1 = ctk.CTkRadioButton(frame, text="0.10", variable=value_var, value=0.10)
     rb2 = ctk.CTkRadioButton(frame, text="0.05", variable=value_var, value=0.05)
@@ -35,7 +35,7 @@ def create_left_panel(main_window, parent, upload_command):
     rb3.grid(row=1, column=3, padx=5)
 
     # Grupo testes
-    ctk.CTkLabel(frame, text="*Testes:").grid(row=2, column=0, padx=10, pady=5, sticky="e")
+    ctk.CTkLabel(frame, text="Statistical Test:").grid(row=2, column=0, padx=10, pady=5, sticky="e")
     testes_var = ctk.StringVar(value=None)
     rb4 = ctk.CTkRadioButton(frame, text="Tukey", variable=testes_var, value="tukey"
     )
@@ -81,20 +81,20 @@ def create_right_panel(main_window, parent, clear_command, grafico_command):
     """
     frame = ctk.CTkFrame(parent)
     
-    title_entry = ctk.CTkEntry(frame, placeholder_text="Entrada do Título")
+    title_entry = ctk.CTkEntry(frame, placeholder_text="Enter Title")
     title_entry.pack(pady=5, expand=True)
 
-    subtitle_entry = ctk.CTkEntry(frame, placeholder_text="Entrada do SubTítulo")
+    subtitle_entry = ctk.CTkEntry(frame, placeholder_text="Enter Subtitle")
     subtitle_entry.pack(pady=5, expand=True)
 
-    eixoX_entry = ctk.CTkEntry(frame, placeholder_text="Entrada do Eixo X")
+    eixoX_entry = ctk.CTkEntry(frame, placeholder_text="Enter x-axis")
     eixoX_entry.pack(pady=5, expand=True)
 
-    eixoY_entry = ctk.CTkEntry(frame, placeholder_text="Entrada do Eixo Y")
+    eixoY_entry = ctk.CTkEntry(frame, placeholder_text="Enter y-axis")
     eixoY_entry.pack(pady=5, expand=True)
 
-    ctk.CTkButton(frame, text="Gerar gráfico", command=grafico_command).pack(pady=(20, 5))
-    ctk.CTkButton(frame, text="Limpar entradas", command=clear_command).pack(pady=5)
+    ctk.CTkButton(frame, text="Chart generate", command=grafico_command).pack(pady=(20, 5))
+    ctk.CTkButton(frame, text="Clear entries", command=clear_command).pack(pady=5)
 
     main_window.title_entry = title_entry
     main_window.subtitle_entry = subtitle_entry
@@ -132,7 +132,7 @@ def build_frame_variaveis(main_window, frame, variaveis):
             if hasattr(main_window, "df") and col in main_window.df.columns:
                 controls = main_window.df[col].dropna().unique().tolist()
                 controls = [str(c) for c in controls]  # Converte todos para string
-                main_window.control_label = ctk.CTkLabel(frame, text="*Selecione o controle:")
+                main_window.control_label = ctk.CTkLabel(frame, text="Select control:")
                 main_window.control_label.grid(row=4, column=0, padx=10, pady=(10, 5), sticky="e")
                 main_window.control_var = ctk.StringVar(value=controls[0] if controls else "")
                 main_window.control_menu = ctk.CTkOptionMenu(frame, variable=main_window.control_var, values=controls)
@@ -157,28 +157,28 @@ def build_frame_variaveis(main_window, frame, variaveis):
         return
 
     if main_window.testes_var.get() == "t-test" or main_window.testes_var.get() == "tukey" and len(variaveis) >= 3:
-        ctk.CTkLabel(frame, text="*Coluna dos grupos:").grid(row=3, column=0, padx=10, pady=(10, 5), sticky="e")
+        ctk.CTkLabel(frame, text="Group column:").grid(row=3, column=0, padx=10, pady=(10, 5), sticky="e")
         group_col = ctk.StringVar(value=variaveis[0] if variaveis else "")
         group_menu = ctk.CTkOptionMenu(frame, variable=group_col, values=variaveis)
         group_menu.grid(row=3, column=1, padx=(0, 20))
 
-        ctk.CTkLabel(frame, text="*Coluna dos fatores:").grid(row=3, column=2, padx=10, pady=(10, 5), sticky="e")
+        ctk.CTkLabel(frame, text="Condition column:").grid(row=3, column=2, padx=10, pady=(10, 5), sticky="e")
         fator_col = ctk.StringVar(value=variaveis[len(variaveis)-2])
         fator_menu = ctk.CTkOptionMenu(frame, variable=fator_col, values=variaveis)
         fator_menu.grid(row=3, column=3, padx=(0, 20))
 
-        ctk.CTkLabel(frame, text="*Coluna dos valores:").grid(row=3, column=4, padx=10, pady=(10, 5), sticky="e")
+        ctk.CTkLabel(frame, text="Values column:").grid(row=3, column=4, padx=10, pady=(10, 5), sticky="e")
         response_col = ctk.StringVar(value=variaveis[len(variaveis)-1])
         response_menu = ctk.CTkOptionMenu(frame, variable=response_col, values=variaveis)
         response_menu.grid(row=3, column=5, padx=(0, 20))
 
     elif main_window.testes_var.get() == "t-test" or main_window.testes_var.get() == "tukey": 
-        ctk.CTkLabel(frame, text="*Coluna dos grupos:").grid(row=3, column=0, padx=10, pady=(10, 5), sticky="e")
+        ctk.CTkLabel(frame, text="Group column:").grid(row=3, column=0, padx=10, pady=(10, 5), sticky="e")
         group_col = ctk.StringVar(value=variaveis[0] if variaveis else "")
         group_menu = ctk.CTkOptionMenu(frame, variable=group_col, values=variaveis)
         group_menu.grid(row=3, column=1, padx=(0, 20))
 
-        ctk.CTkLabel(frame, text="*Coluna dos valores:").grid(row=3, column=2, padx=10, pady=(10, 5), sticky="e")
+        ctk.CTkLabel(frame, text="Values column:").grid(row=3, column=2, padx=10, pady=(10, 5), sticky="e")
         response_col = ctk.StringVar(value=variaveis[len(variaveis)-1])
         response_menu = ctk.CTkOptionMenu(frame, variable=response_col, values=variaveis)
         response_menu.grid(row=3, column=3, padx=(0, 20))
@@ -187,12 +187,12 @@ def build_frame_variaveis(main_window, frame, variaveis):
 
 
     else:
-        ctk.CTkLabel(frame, text="*Coluna dos grupos:").grid(row=3, column=0, padx=10, pady=(10, 5), sticky="e")
+        ctk.CTkLabel(frame, text="Group column:").grid(row=3, column=0, padx=10, pady=(10, 5), sticky="e")
         group_col = ctk.StringVar(value=variaveis[0] if variaveis else "")
         group_menu = ctk.CTkOptionMenu(frame, variable=group_col, values=variaveis)
         group_menu.grid(row=3, column=1, padx=(0, 20))
 
-        ctk.CTkLabel(frame, text="*Coluna dos valores:").grid(row=3, column=2, padx=10, pady=(10, 5), sticky="e")
+        ctk.CTkLabel(frame, text="Values column:").grid(row=3, column=2, padx=10, pady=(10, 5), sticky="e")
         response_col = ctk.StringVar(value=variaveis[len(variaveis)-1])
         response_menu = ctk.CTkOptionMenu(frame, variable=response_col, values=variaveis)
         response_menu.grid(row=3, column=3, padx=(0, 20))
