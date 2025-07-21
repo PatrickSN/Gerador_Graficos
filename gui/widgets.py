@@ -206,7 +206,6 @@ def build_frame_variaveis(main_window, frame, variaveis):
     main_window.fator_col = fator_col
     main_window.response_col = response_col
 
-
 def create_table_frame(parent):
     """ Cria um frame para exibir uma tabela com rolagem.
     Parâmetros:
@@ -308,3 +307,22 @@ def order_of_(df, coluna= None):
             valores_unicos.update(df[col].dropna().unique())
 
     return list(valores_unicos)
+
+def add_tooltip(widget, text):
+    tooltip = None
+
+    def on_enter(event):
+        nonlocal tooltip
+        x = widget.winfo_rootx() + 20
+        y = widget.winfo_rooty() + widget.winfo_height() + 5
+        tooltip = ctk.CTkLabel(widget.master, text=text, fg_color="#333", text_color="white", corner_radius=6)
+        tooltip.place(x=x, y=y)
+
+    def on_leave(event):
+        nonlocal tooltip
+        if tooltip:
+            tooltip.destroy()
+            tooltip = None
+
+    widget.bind("<Enter>", on_enter)
+    widget.bind("<Leave>", on_leave)

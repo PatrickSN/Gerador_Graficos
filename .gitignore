@@ -29,5 +29,6 @@ Thumbs.db
 *.png
 
 # Arquivos de teste
+test_app/*
 *.test.py
 

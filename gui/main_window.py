@@ -4,10 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib.ticker as ticker
 
-from tkinter import filedialog, ttk
-from tkinter import messagebox
-from tkinter import StringVar
-from tkinter import TclError
+from tkinter import filedialog, ttk, colorchooser
 
 from gui.widgets import *
 from gui.estatistica import *
@@ -19,7 +16,7 @@ class MainWindow(ctk.CTk):
 
         self.title("Análise de Dados com Testes Estatísticos")
         self.geometry(None)
-        self.minsize(width=1000, height=600)
+        self.minsize(1000, 600)
 
         self.title_entry = None
         self.subtitle_entry = None
@@ -37,12 +34,7 @@ class MainWindow(ctk.CTk):
         # Aba 2: Configurações (placeholder)
         self.tab_configuracoes = ctk.CTkFrame(self.tabview)
         self.tabview.add(self.tab_configuracoes, text="Settings")
-        ctk.CTkLabel(self.tab_configuracoes, text="Configurações aparecerão aqui").pack(padx=20, pady=20)
-        """
-        # Aba 3: Sobre (placeholder)
-        self.tab_sobre = ctk.CTkFrame(self.tabview)
-        self.tabview.add(self.tab_sobre, text="Sobre")
-        ctk.CTkLabel(self.tab_sobre, text="Aplicativo de análise estatística desenvolvido com tkinter e customtkinter.\nDesenvolvido por ...").pack(padx=20, pady=20)"""
+        self.setup_settings_tab(self.tab_configuracoes)
 
     def setup_analysis_tab(self, parent):
         """
@@ -59,6 +51,61 @@ class MainWindow(ctk.CTk):
         self.right_frame.grid(row=0, column=1, padx=10, pady=10, sticky="n")
         self.table_frame.pack(padx=20, pady=(0, 20), fill="both", expand=True)
 
+    def setup_settings_tab(self, parent):
+        """
+        Configura os elementos do grafico.
+        """
+        def escolher_cor():
+            cor = colorchooser.askcolor(title="Escolha uma cor")[1]
+            if cor:
+                self.selected_color = cor
+                self.color_label.configure(text=f"Cor selecionada: {cor}", fg_color=cor)
+
+        def toggle_legend():    
+            """ Alterna a visibilidade da legenda no gráfico.
+            """
+            if hasattr(self, "legend_visible"):
+                self.legend_visible = not self.legend_visible
+            else:
+                self.legend_visible = True
+
+            # Atualiza a legenda no gráfico
+            if hasattr(self, "grafico"):
+                self.grafico.legend().set_visible(self.legend_visible)
+                self.grafico.draw()
+        
+        self.settings_frame = ctk.CTkFrame(parent)
+        self.settings_frame.pack(fill="both", expand=True)
+
+        #configura algumas funcoes do grafico
+        self.legenda = ctk.CTkCheckBox(self.settings_frame, text="Subtitle", command=toggle_legend())
+        self.legenda.grid(row=0, column=0, padx=10, pady=5, sticky="w")
+        self.fontSize = ctk.CTkEntry(self.settings_frame, placeholder_text="Font Size", width=200)
+        self.fontSize.grid(row=1, column=0, padx=10, pady=5, sticky="w")
+        self.figSize = ctk.CTkEntry(self.settings_frame, placeholder_text="Figure Size", width=200)
+        self.figSize.grid(row=1, column=1, padx=10, pady=5, sticky="w")
+
+        #configura as cores do grafico
+        ctk.CTkLabel(self.settings_frame, text="Cores do gráfico:").grid(row=2, column=0, padx=10, pady=5, sticky="w")
+        self.selected_color = "#66c2a5"  # cor padrão
+        self.color_label = ctk.CTkLabel(self.settings_frame, text=f"Cor selecionada: {self.selected_color} ", fg_color=self.selected_color)
+        self.color_label.grid(row=2, column=0, padx=10, pady=5, sticky="w")
+
+        self.color_button = ctk.CTkButton(self.settings_frame, text="Selecionar cor", command=escolher_cor)
+        self.color_button.grid(row=2, column=1, padx=10, pady=5, sticky="w")
+
+        self.color_mode_var = ctk.StringVar(value="alternadas")
+        self.color_mode_menu = ctk.CTkOptionMenu(
+            self.settings_frame,
+            values=["alternadas", "única"],
+            variable=self.color_mode_var
+        )
+        self.color_mode_menu.grid(row=3, column=0, padx=10, pady=5, sticky="w")
+
+        add_tooltip(self.color_mode_menu, "Escolha entre cores alternadas ou cor única para as barras")
+        add_tooltip(self.fontSize, "Tamanho da fonte do gráfico")
+        add_tooltip(self.figSize, "Entre com o tamanho da figura em centimetros (ex: 8x6)")
+        
     def upload_excel(self):
         """ Abre um diálogo para selecionar um arquivo Excel e carrega suas abas.
         Atualiza o OptionMenu com as abas disponíveis e carrega os dados da aba selecionada
@@ -200,7 +247,6 @@ class MainWindow(ctk.CTk):
             display_table(self.table_scrollable, pd.DataFrame({"": ["Preencha todos os campos obrigatórios."]}))
             return"""
         
-
         # Configurações iniciais
         plt.rcParams['font.family'] = 'Arial'
         plt.rcParams['font.size'] = 9
@@ -212,12 +258,21 @@ class MainWindow(ctk.CTk):
             plt.figure(figsize=(8/2.54, 8/2.54), dpi=300)  # Converter cm para polegadas
             ax = plt.gca()
             # Barras
+            if self.color_mode_var.get() == "única":
+                # Cor única para todas as barras
+                palette = [self.selected_color] * len(order)
+            else:
+                # Cores alternadas, ajustando à quantidade de variáveis
+                palette = sns.color_palette("Set1", n_colors=len(order))
             sns.barplot(x=self.group_col.get(), y='mean', data=summary_stats, 
                         errorbar='se', capsize=0.2, 
-                        width=0.3, alpha=0.8, ax=ax, order=order, linewidth=1)
+                        width=0.3, alpha=0.8, ax=ax, order=order, linewidth=1, palette=palette,
+                        hue=self.group_col.get(),
+                        legend=False
+                        )
             # Pontos individuais
             sns.stripplot(x=self.group_col.get(), y=self.response_col.get(), data=self.df, hue=self.group_col.get(),  
-                        jitter=0.1, size=2, palette='dark:black', ax=ax, legend=False)
+                        jitter=0.1, size=1, palette='dark:black', ax=ax, legend=False)
             
             # Elementos estéticos# busca a maior media para ajustar o limite do eixo y
             y_max = summary_stats['mean'].max()
@@ -430,7 +485,6 @@ class MainWindow(ctk.CTk):
             self.testes_var.set("")
         
         self.destroy_tabel()
-
         if hasattr(self.table_scrollable, "tree") and self.table_scrollable.tree:
             self.table_scrollable.tree.destroy()
             self.table_scrollable.tree = None
