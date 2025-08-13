@@ -94,7 +94,7 @@ class MainWindow(ctk.CTk):
         self.color_button = ctk.CTkButton(self.settings_frame, text="Selecionar cor", command=escolher_cor)
         self.color_button.grid(row=2, column=1, padx=10, pady=5, sticky="w")
 
-        self.color_mode_var = ctk.StringVar(value="alternadas")
+        self.color_mode_var = ctk.StringVar(value="única")
         self.color_mode_menu = ctk.CTkOptionMenu(
             self.settings_frame,
             values=["alternadas", "única"],
@@ -248,8 +248,8 @@ class MainWindow(ctk.CTk):
             return"""
         
         # Configurações iniciais
-        plt.rcParams['font.family'] = 'Arial'
-        plt.rcParams['font.size'] = 9
+        plt.rcParams['font.family'] = self.font_family_var.get() if hasattr(self, 'font_family_var') else 'Arial'
+        plt.rcParams['font.size'] = int(self.fontSize.get()) if self.fontSize else 10
 
         if self.testes_var.get() == "dunnett":
             summary_stats, order = self.gerar_estatisticas()
@@ -298,7 +298,7 @@ class MainWindow(ctk.CTk):
                     linewidth=1
                 )
                 # Adiciona o texto de significância
-                ax.text(i, y_pos, row['significance'], ha='center', va='bottom', size=12)
+                ax.text(i, y_pos, row['significance'], ha='center', va='bottom', size=10)
 
             # Remover bordas
             sns.despine()
@@ -338,7 +338,7 @@ class MainWindow(ctk.CTk):
                         order=ordens,                  # Use a mesma ordem do barplot
                         dodge=True,     # Para separar os pontos dos grupos
                         jitter=0.1,
-                        size=2,
+                        size=1,
                         palette='dark:black',
                         ax=ax
                         )
