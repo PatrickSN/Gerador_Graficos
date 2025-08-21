@@ -1,7 +1,13 @@
 import numpy as np
-from statsmodels.stats.multicomp import pairwise_tukeyhsd
-from scipy.stats import ttest_ind
+import statsmodels.api as sm
 import pandas as pd
+import networkx as nx
+import matplotlib.pyplot as plt
+import seaborn as sns
+from statsmodels.stats.multicomp import pairwise_tukeyhsd, MultiComparison
+from statsmodels.formula.api import ols
+from scipy.stats import ttest_ind
+
 
 class Estatiscas:
     def __init__(self, data: pd.DataFrame, group_col: str, fator_col: str, response_col: str, control: str, alpha=0.05):
@@ -115,7 +121,6 @@ def run_t_test(data: pd.DataFrame, group_col: str, fator_col: str, response_col:
         })
     return pd.DataFrame(results)
 
-    
 def run_test_dunnett(data: pd.DataFrame, response_col:str, group_col:str, control:str, alpha: float=0.05):
     """
     Teste de Dunnett para comparações múltiplas com um grupo controle.
@@ -169,6 +174,66 @@ def run_test_tukey(data: pd.DataFrame, response_col:str, group_col:str, alpha: f
     df_res = pd.DataFrame(res[1:], columns=cols)
 
     return df_res
+
+def run_test_tukey_anova(df: pd.DataFrame, col_trat: str, col_val: str, alpha=0.05):    
+    # ANOVA
+    modelo = ols(f'{col_val} ~ C({col_trat})', data=df).fit()
+    anova = sm.stats.anova_lm(modelo, typ=2)
+
+    # Teste de Tukey
+    mc = MultiComparison(df[col_val], df[col_trat])
+    tukey_result = mc.tukeyhsd(alpha=alpha)
+    results = pd.DataFrame(data=tukey_result._results_table.data[1:], columns=tukey_result._results_table.data[0])
+
+
+
+    # Função robusta para atribuição das letras de significância (CLD)
+    def tukey_letters(mc, tukey_result):
+        groups = list(mc.groupsunique)
+        n = len(groups)
+
+        # Cria grafo onde arestas representam "sem diferença significativa"
+        G = nx.Graph()
+        G.add_nodes_from(groups)
+
+        idx = 0
+        for i in range(n):
+            for j in range(i+1, n):
+                g1, g2 = groups[i], groups[j]
+                if not tukey_result.reject[idx]:  # Sem diferença -> adiciona aresta
+                    G.add_edge(g1, g2)
+                idx += 1
+
+        # Cada componente conexo do grafo pode compartilhar uma letra
+        cliques = list(nx.find_cliques(G))
+
+        # Algoritmo de atribuição de letras
+        letters_dict = {g: '' for g in groups}
+        letra_ord = iter("abcdefghijklmnopqrstuvwxyz")
+
+        for clique in cliques:
+            letra = next(letra_ord)
+            for grupo in clique:
+                letters_dict[grupo] += letra
+
+        return letters_dict
+
+    # Gera letras para os tratamentos
+    letters_dict = tukey_letters(mc, tukey_result)
+
+    # Calcula média e erro padrão
+    media = df.groupby(col_trat)[col_val].mean()
+    erro = df.groupby(col_trat)[col_val].sem()
+
+    # Ordena pelo tratamento para plotar corretamente
+    media = media.sort_index()
+    erro = erro.reindex(media.index)
+
+    # Letras para cada tratamento na ordem certa
+    letras = [letters_dict[t] for t in media.index]
+
+    return results, media, erro, letras
+
 
 def add_significance_dunnet(data: pd.DataFrame, dunnett_result, response_col:str, group_col:str, control:str, alpha: float=0.05):
     """    Adiciona estatísticas resumidas e significância aos resultados do teste de Dunnett.
@@ -246,28 +311,83 @@ def add_significance_ttest(data: pd.DataFrame, t_test_result: pd.DataFrame, resp
 
     return summary_stats[[fator_col, group_col, 'mean', 'SE', 'significance']], data[fator_col].dropna().unique().tolist()
 
-    
-
-
 
 if __name__ == "__main__":
+    """
     file_path = "L:/Projetos/Lab/Programas/R/Dados/supplementary_review.xlsx"
     data = pd.read_excel(file_path, sheet_name="fig1a")
     
-    """
+    
     results, order = run_test_dunnett(data, response_col='value', group_col='name', control='Col-0')
     print("\nResultados do teste de Dunnett:")
     print(results)
     summary_stats = add_significance_dunnet(data, results, response_col='value', group_col='name', control='Col-0')
     print("Estatísticas resumidas com significância Dunnett: ")
-    print(summary_stats)"""
+    print(summary_stats)
 
     results_tukey = run_test_tukey(data, response_col='value', group_col='name')
     print("\nResultados do teste de Tukey:")
     print(results_tukey)
     summary_stats_tukey = add_significance_tukey(results_tukey, alpha=0.05)
     print("Estatísticas resumidas com significância Tukey:")
-    print(summary_stats_tukey)
+    print(summary_stats_tukey)"""
+    file_path = "L:/Projetos/Lab/Projetos/Gerador_Graficos/exemplos.xlsx"
+    data_tukey = pd.read_excel(file_path, sheet_name="Tukey")
+    re, media, erro, letras = run_test_tukey_anova(data_tukey, "genotype", "expression")
+    
+    ordens = sorted(data_tukey["genotype"].unique(), key=fator_sort_key)
+    print(media.index[0])
+
+    plot_df = pd.DataFrame({
+                'Tratamento': media.index,
+                'Média': media.values,
+                'Erro': erro.values,
+                'Letra': letras
+            })
+    dpi = 300
+    def pixel_for_point(px: float, DPI: int):
+        pt = px * 72 / DPI
+        return pt
+    
+    plt.figure(figsize=(3,3), dpi=300)
+    ax = plt.gca()
+
+    # Gráfico de barras com erro padrão usando seaborn
+    sns.barplot(
+        data=plot_df,
+        x='Tratamento',
+        y='Média',
+        errorbar='se',
+        yerr=plot_df['Erro'],
+        capsize=0.2,
+        color='lightblue',
+        ax=ax
+    )
+
+    # Adiciona barras de erro manualmente
+    for i, row in plot_df.iterrows():
+        ax.errorbar(
+            x=i,
+            y=row['Média'],
+            yerr=row['Erro'],
+            fmt='none',
+            c='black',
+            capsize = 5,
+            linewidth=0.2
+        )
+
+    # Adiciona letras acima das barras
+    for i, row in plot_df.iterrows():
+        ax.text(i, row['Média'] + max(plot_df['Erro'])*1.1, row['Letra'],
+                ha='center', va='bottom', fontsize=10)
+
+
+    # Pontos individuais
+    sns.stripplot(x="genotype", y="expression", data=data_tukey, hue="genotype", jitter=0.1, size=1, ax=ax, legend=False, palette='dark:black')
+
+    plt.tight_layout()
+    plt.savefig("_tukey.tiff",format="tiff", dpi=300)
+    plt.show()
 
     """
     data = pd.read_excel(file_path, sheet_name="fig7c")

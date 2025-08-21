@@ -326,3 +326,4 @@ def add_tooltip(widget, text):
 
     widget.bind("<Enter>", on_enter)
     widget.bind("<Leave>", on_leave)
+

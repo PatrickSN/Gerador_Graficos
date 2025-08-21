@@ -31,5 +31,7 @@ Thumbs.db
 # Arquivos de teste
 test/
 test_app/*
-*.test.py
+*.test.*
+
+NIT/
 
