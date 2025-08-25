@@ -88,38 +88,11 @@ O `.exe` resultante ficará em `dist\Gerador_Graficos.exe`.
 
 ---
 
-## ⚠️ Correções / Observações Importantes (recomendadas antes de empacotar)
-
-- Corrija o typo em `app.py`: `ctk.set_appearance_mode("Systen")` → `ctk.set_appearance_mode("System")`.  
-- Em `main_window.py`, `command` não pode ser uma *string* (ex.: `command="self.pick_color"`). Passe a função: `command=self.pick_color` ou use `lambda:`.  
-- Transforme `gui/` em package (opcional mas recomendado) adicionando `gui/__init__.py` para evitar problemas de import quando empacotado.  
-- Ao carregar arquivos empacotados com PyInstaller, use `sys._MEIPASS` para localizar recursos embutidos:
-```python
-import sys, os
-if getattr(sys, 'frozen', False):
-    base_path = sys._MEIPASS
-else:
-    base_path = os.path.dirname(__file__)
-path_arquivo = os.path.join(base_path, 'gui', 'algum_arquivo')
-```
-- Revise dependências desnecessárias (ex.: `networkx`, `statsmodels`) se quiser reduzir o tamanho do `.exe`.
-
----
-
 ## 🛠️ Dicas de Debug (se o exe fechar instantaneamente)
 
 - Gere o exe com console removendo `--windowed` para ver tracebacks.  
 - Teste `python app.py` e corrija todos os erros antes de empacotar.  
 - Use `--hidden-import` no PyInstaller se faltar algum import detectado apenas em runtime.
-
----
-
-## 🤝 Contribuições
-
-Contribuições são bem-vindas!
-
-1. Fork -> 2. Branch (`feature/x`) -> 3. Commit -> 4. Pull Request.  
-Abra *issues* para bugs ou sugestões.
 
 ---
 
