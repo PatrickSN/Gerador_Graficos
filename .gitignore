@@ -23,15 +23,21 @@ env/
 # Arquivos de sistema
 .DS_Store
 Thumbs.db
+*.bat
 
 # Imagens grandes que não precisam ser versionadas
 *.tiff
 *.png
+*.svg
 
 # Arquivos de teste
 test/
 test_app/*
 *.test.*
 
-NIT/
+# Arquivos de construcao
+build/
+dist/
+*.spec
+
 

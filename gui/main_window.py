@@ -5,21 +5,11 @@ import seaborn as sns
 import matplotlib.ticker as ticker
 
 from tkinter import filedialog, ttk, colorchooser
-
-from dataclasses import dataclass
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional
 
 from gui.widgets import *
 from gui.estatistica import *
 
-@dataclass
-class AnalysisResult:
-    method: str
-    alpha: float
-    control: Optional[str]
-    table: pd.DataFrame  # dados resumidos (médias/EP)
-    details: pd.DataFrame  # tabela de comparações com p-valor etc.
-    letters: Optional[Dict[str, str]] = None  # para Tukey
 
 class MainWindow(ctk.CTk):
     def __init__(self):
@@ -29,29 +19,20 @@ class MainWindow(ctk.CTk):
         self.sheetnames: List[str] = []
         self.current_sheet: Optional[str] = None
 
-        # Parâmetros
-        self.pvalue = ctk.StringVar(value="0.05")
-        self.test_choice = ctk.StringVar(value="Tukey")
-        self.control_value = ctk.StringVar(value="")
-        self.factor_col = ctk.StringVar(value="")
-        self.value_col = ctk.StringVar(value="")
-        self.twolevel_col = ctk.StringVar(value="")
-        self.nlevel_col = ctk.StringVar(value="")
-
         # Plot params
+        self.color_mode_var = ctk.StringVar(value="única")
         self.title_text = ctk.StringVar(value="")
         self.xlabel_text = ctk.StringVar(value="Tratamento")
         self.ylabel_text = ctk.StringVar(value="Média ± EP")
         self.bar_color = ctk.StringVar(value="#8ec6b9")
-        self.use_legend = ctk.BooleanVar(value=False)
         self.font_size = ctk.DoubleVar(value=10.0)
         self.fig_w = ctk.DoubleVar(value=8.0)
         self.fig_h = ctk.DoubleVar(value=8.0)
-        self.save_format = ctk.StringVar(value=".svg")
+        self.save_format = ctk.StringVar(value="svg")
 
-        self.title("Análise de Dados com Testes Estatísticos")
+        self.title("Grafitics: estatística personalizada em gráficos")
         self.geometry(None)
-        self.minsize(1000, 600)
+        self.minsize(1000, 800)
 
         self.title_entry = None
         self.subtitle_entry = None
@@ -71,6 +52,10 @@ class MainWindow(ctk.CTk):
         self.tabview.add(self.tab_configuracoes, text="Settings")
         self.setup_settings_tab(self.tab_configuracoes)
 
+    def pick_color(self):
+        color = colorchooser.askcolor(color=self.bar_color.get())
+        if color and color[1]:
+            self.bar_color.set(color[1])
 
     def setup_analysis_tab(self, parent):
         """
@@ -88,36 +73,26 @@ class MainWindow(ctk.CTk):
         self.table_frame.pack(padx=20, pady=(0, 20), fill="both", expand=True)
 
     def setup_settings_tab(self, parent):
-        self._build_tab_plot(parent)
-
-    def _build_tab_plot(self, parent):
         frm = ctk.CTkFrame(parent); frm.pack(fill='x', padx=10, pady=10)
-        ctk.CTkLabel(frm, text="Título:").grid(row=0, column=0, sticky='w')
-        ctk.CTkEntry(frm, textvariable=self.title_text, width=40).grid(row=0, column=1, sticky='w')
-        ctk.CTkLabel(frm, text="X label:").grid(row=0, column=2, sticky='w', padx=(10,0))
-        ctk.CTkEntry(frm, textvariable=self.xlabel_text, width=24).grid(row=0, column=3, sticky='w')
-        ctk.CTkLabel(frm, text="Y label:").grid(row=0, column=4, sticky='w', padx=(10,0))
-        ctk.CTkEntry(frm, textvariable=self.ylabel_text, width=24).grid(row=0, column=5, sticky='w')
 
-        ctk.CTkLabel(frm, text="Cor das barras:").grid(row=1, column=0, sticky='w', pady=6)
-        ecolor = ctk.CTkEntry(frm, textvariable=self.bar_color, width=16)
+        ctk.CTkLabel(frm, text="Cor das barras:").grid(row=1, column=0, sticky='w', pady=6, padx=6)
+        ecolor = ctk.CTkEntry(frm, textvariable=self.bar_color, width=100)
         ecolor.grid(row=1, column=1, sticky='w')
-        ctk.CTkButton(frm, text='Paleta…', command="self.pick_color").grid(row=1, column=2, sticky='w')
-        ctk.CTkCheckBox(frm, text="Legenda", variable=self.use_legend).grid(row=1, column=3, sticky='w')
-        ctk.CTkLabel(frm, text="Fonte:").grid(row=1, column=4, sticky='w')
+        ctk.CTkButton(frm, text='Paleta…', command=self.pick_color).grid(row=1, column=2, sticky='w')
+        ctk.CTkLabel(frm, text="Tamanho da fonte:").grid(row=1, column=4, sticky='w')
         ttk.Spinbox(frm, from_=10, to=24, textvariable=self.font_size, width=6).grid(row=1, column=5, sticky='w')
 
         ctk.CTkLabel(frm, text="Tamanho (cm):").grid(row=2, column=0, sticky='w')
         ttk.Spinbox(frm, from_=3.0, to=16.0, increment=1, textvariable=self.fig_w, width=6).grid(row=2, column=1, sticky='w')
         ttk.Spinbox(frm, from_=3.0, to=16.0, increment=1, textvariable=self.fig_h, width=6).grid(row=2, column=2, sticky='w')
 
-        ctk.CTkButton(frm, text="Gerar gráfico", command="self.make_plot").grid(row=2, column=3, padx=6)
-        ctk.CTkLabel(frm, text="Salvar como:").grid(row=2, column=4, sticky='e')
-        ttk.Combobox(frm, values=[".svg",".tiff"], textvariable=self.save_format, width=8).grid(row=2, column=5, sticky='w')
-        ctk.CTkButton(frm, text="Salvar imagem", command="self.save_plot").grid(row=2, column=6, padx=6)
+        ctk.CTkLabel(frm, text="Modo de cor:").grid(row=2, column=3, sticky='e')
+        self.color_mode_menu = ctk.CTkOptionMenu(frm,values=["alternadas", "única"],variable=self.color_mode_var)
+        self.color_mode_menu.grid(row=2, column=4, padx=10, pady=5, sticky="w")
 
-        self.last_result: Optional[AnalysisResult] = None
-        self.last_fig: Optional[plt.Figure] = None
+        ctk.CTkLabel(frm, text="Salvar como:").grid(row=2, column=5, sticky='e')
+        ttk.Combobox(frm, values=["svg","tiff"], textvariable=self.save_format, width=8).grid(row=2, column=6, sticky='w')
+        ctk.CTkButton(frm, text="Salvar imagem", command=self.build_grafico).grid(row=2, column=7, padx=6)
 
     def upload_excel(self):
         """ Abre um diálogo para selecionar um arquivo Excel e carrega suas abas.
@@ -246,6 +221,8 @@ class MainWindow(ctk.CTk):
         Verifica se o DataFrame foi carregado e se as entradas necessárias estão preenchidas.
         Se não estiverem, exibe uma mensagem de erro na tabela.
         """
+        ext = self.save_format.get()
+        dpi = 600 if ext.lower() in ('tiff','tif') else 300
         fig_w_pol = self.fig_w.get()/2.54
         fig_h_pol = self.fig_h.get()/2.54
         # Verifica se o DataFrame foi carregado
@@ -265,7 +242,7 @@ class MainWindow(ctk.CTk):
             summary_stats, order = self.gerar_estatisticas()
             #lembrar de remover partes redundantes do código
             # Configurar o plot
-            plt.figure(figsize=(fig_w_pol, fig_h_pol), dpi=300)  # Converter cm para polegadas
+            plt.figure(figsize=(fig_w_pol, fig_h_pol), dpi=dpi)  # Converter cm para polegadas
             ax = plt.gca()
             # Barras
             palette = sns.color_palette("Set1", n_colors=len(order))
@@ -283,7 +260,11 @@ class MainWindow(ctk.CTk):
             y_max = summary_stats['mean'].max()
             ax.set_ylim(0, y_max * 1.2)
             ax.set_xticks(range(len(order)))  # Garante que o número de ticks corresponde ao número de labels
-            ax.set_xticklabels(order, rotation=45, ha='right')
+            if order:
+                ax.set_xticks(range(len(order)))
+                ax.set_xticklabels(order, rotation=45, ha='right')
+            else:
+                ax.set_xticks([])  # evita warnings se ordens estiver vazio
             ax.set(xlabel=self.eixoX_entry.get(), ylabel=self.eixoY_entry.get(), title=self.title_entry.get())
             y_espaco = 0.2 * y_max * 1.2
             ax.yaxis.set_major_locator(ticker.MultipleLocator(y_espaco))
@@ -309,7 +290,7 @@ class MainWindow(ctk.CTk):
             sns.despine()
 
             # Salvar figura
-            plt.savefig("grafico1.tiff", format="tiff", bbox_inches="tight")
+            plt.savefig(f"grafico_dunnet.{ext}", format=ext, bbox_inches="tight")
             plt.tight_layout()
             plt.show()
 
@@ -318,7 +299,7 @@ class MainWindow(ctk.CTk):
             
             sig_map = summary_stats.set_index(self.fator_col.get())['significance'].to_dict()
             # Configurar o plot
-            fig, ax = plt.subplots(figsize=(fig_w_pol, fig_h_pol), dpi=300)  # Converter cm para polegadas
+            fig, ax = plt.subplots(figsize=(fig_w_pol, fig_h_pol), dpi=dpi)  # Converter cm para polegadas
             # Gráfico de barras
             if "control" or "Col-0" in order:
                 ordens = order
@@ -395,14 +376,18 @@ class MainWindow(ctk.CTk):
             ax.set_xlabel(self.eixoX_entry.get(),fontsize=float(self.font_size.get()))
             handles, labels = ax.get_legend_handles_labels()
             ax.legend(handles[:len(names)], labels[:len(names)], loc="upper center", bbox_to_anchor=(0.5, y_legenda_rel), ncol=2, frameon=False)
-            ax.set_xticklabels(ordens, rotation=45, ha='right')
+            if ordens:
+                ax.set_xticks(range(len(ordens)))
+                ax.set_xticklabels(ordens, rotation=45, ha='right')
+            else:
+                ax.set_xticks([])  # evita warnings se ordens estiver vazio
             plt.tight_layout()
 
             # Remover bordas
             sns.despine()
 
             # Salva a figura
-            plt.savefig("grafico2.tiff", format="tiff", bbox_inches="tight")
+            plt.savefig(f"grafico_ttest.{ext}", format=ext, bbox_inches="tight")
             plt.show()
         
         elif self.testes_var.get() == "tukey":
@@ -410,7 +395,7 @@ class MainWindow(ctk.CTk):
             
             ordens = media.index
 
-            plt.figure(figsize=(fig_w_pol, fig_h_pol),dpi=300)
+            plt.figure(figsize=(fig_w_pol, fig_h_pol),dpi=dpi)
             ax = plt.gca()
             x = np.arange(len(media))
             plt.bar(x, media.values, yerr=erro.values, capsize=5, color='lightblue')
@@ -428,12 +413,15 @@ class MainWindow(ctk.CTk):
              
             # Pontos individuais
             sns.stripplot(x=self.group_col.get(), y=self.response_col.get(), data=self.df, hue=self.group_col.get(), jitter=0.1, size=1, ax=ax, legend=False, palette='dark:black')
-            ax.set_xticklabels(ordens, rotation=45, ha='right')
+            if ordens:
+                ax.set_xticks(range(len(ordens)))
+                ax.set_xticklabels(ordens, rotation=45, ha='right')
+            else:
+                ax.set_xticks([])  # evita warnings se ordens estiver vazio
 
             plt.tight_layout()
-            plt.savefig("grafico_tukey.svg",format="svg", dpi = 300)
+            plt.savefig(f"grafico_tukey.{ext}",format=ext, dpi = dpi)
             plt.show()
-
 
     def clear_entries(self):
         """ Limpa todas as entradas e widgets da janela.

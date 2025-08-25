@@ -1,0 +1,10 @@
+customtkinter
+pandas
+numpy
+matplotlib
+seaborn
+statsmodels
+scipy
+networkx
+openpyxl
+pyinstaller
