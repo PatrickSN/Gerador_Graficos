@@ -1,57 +1,136 @@
 #  Grafitics: estatística personalizada em gráficos
 
-Uma aplicação gráfica leve em Python que permite carregar dados, gerar gráficos e exportar resultados — com uma interface clean e intuitiva!
+![Status do Projeto](https://img.shields.io/badge/status-beta-yellow) ![Python](https://img.shields.io/badge/python-3.8%2B-blue) ![License](https://img.shields.io/badge/license-MIT-green)
+
+Aplicação desktop em Python para carregar planilhas, gerar gráficos interativos e exportar imagens — GUI moderna com **CustomTkinter** e empacotável para Windows via **PyInstaller**.
 
 ---
 
-##  Destaques
+## 🔍 Destaques
 
--  Interface gráfica com **CustomTkinter**: moderna e personalizável.  
--  Suporta **.xlsx** como entrada, sem complicações.  
--  Geração de gráficos com **Matplotlib** + **Seaborn** para visualização elegante.  
--  Estatísticas avançadas com **Pandas**, **Scipy**, **Statsmodels** e **NetworkX**.  
--  Empacotável como `.exe` usando **PyInstaller** — ideal para distribuir em Windows.
-
----
-
-##  Visão Geral
-
-Este aplicativo nasce da necessidade de transformar dados em insights visuais rápidos, sem sair da praticidade de uma GUI. Com poucos cliques você:
-
-1. Carrega uma planilha `.xlsx`.  
-2. Visualiza o gráfico desejado.  
-3. Salva a imagem em PNG.  
-4. Se quiser mais, dispõe de estatísticas descritivas e análises mais sofisticadas.
+- Interface elegante com **CustomTkinter**  
+- Leitura de `.xlsx` com **pandas / openpyxl**  
+- Gráficos com **matplotlib** e **seaborn**  
+- Módulo de estatísticas com **statsmodels**, **scipy** e **networkx**  
+- Empacotamento Windows (`.exe`) usando **PyInstaller**
 
 ---
 
-##  Estrutura de Arquivos do Projeto
+## 📁 Estrutura do projeto
 
-├── app.py # Script principal — inicia a GUI
+```
+├── app.py               # Script principal que inicializa a GUI
 ├── gui/
-│ ├── main_window.py # Janela principal e lógica da interface
-│ ├── widgets.py # Componentes reutilizáveis (botões, controles)
-│ └── estatistica.py # Módulo de análises e estatísticas
-├── requirements.txt # Dependências do projeto
-├── build.bat # Script Windows para gerar o executável
-└── README.md # Este arquivo
+│   ├── main_window.py   # Janela principal e construção da interface
+│   ├── widgets.py       # Componentes reutilizáveis
+│   └── estatistica.py   # Funções de análise/estatística
+├── requirements.txt     # Dependências
+├── build.bat            # Script Windows para gerar o executável
+└── README.md            # Este arquivo
+```
 
-##  Instalação e Execução (Para Desenvolvedores)
+---
+
+## ⚙️ Instalação (Desenvolvimento)
 
 1. Clone o repositório:
-   ```bash
-   git clone https://github.com/seu-usuario/seu-repo.git
-   cd seu-repo
-   
-2. Crie e ative um ambiente virtual:
+```bash
+git clone https://github.com/seu-usuario/seu-repo.git
+cd seu-repo
+```
 
-    python -m venv .venv
-    .venv\Scripts\activate
+2. Crie e ative um ambiente virtual (Windows):
+```powershell
+python -m venv .venv
+.venv\Scripts\activate
+```
 
-3. Instale as dependências:
+3. Instale dependências:
+```bash
+pip install -r requirements.txt
+```
 
-    pip install -r requirements.txt
+4. Execute em modo desenvolvimento:
+```bash
+python app.py
+```
 
-4. Teste localmente:
+Se tudo estiver funcionando, gere o executável com:
+```bash
+build.bat
+```
+O `.exe` será criado em `dist\Gerador_Graficos.exe`.
 
-    python app.py
+---
+
+## 🧩 Gerar o executável (Windows)
+
+No Windows, use o `build.bat` fornecido (ou execute manualmente o PyInstaller):
+
+```powershell
+# ativar venv (se ainda não estiver)
+.venv\Scripts\activate
+
+# gerar exe (exemplo)
+pyinstaller --onefile --windowed --name Gerador_Graficos --add-data "gui;gui" app.py
+```
+
+O `.exe` resultante ficará em `dist\Gerador_Graficos.exe`.
+
+---
+
+## 📝 Uso Rápido (Usuário Final)
+
+1. Abra o aplicativo (`app.py` ou `.exe`).  
+2. Carregue sua planilha `.xlsx`.  
+3. Escolha o tipo de gráfico e clique em **Gerar**.  
+4. Salve o resultado como PNG pelo botão de exportação.
+
+---
+
+## ⚠️ Correções / Observações Importantes (recomendadas antes de empacotar)
+
+- Corrija o typo em `app.py`: `ctk.set_appearance_mode("Systen")` → `ctk.set_appearance_mode("System")`.  
+- Em `main_window.py`, `command` não pode ser uma *string* (ex.: `command="self.pick_color"`). Passe a função: `command=self.pick_color` ou use `lambda:`.  
+- Transforme `gui/` em package (opcional mas recomendado) adicionando `gui/__init__.py` para evitar problemas de import quando empacotado.  
+- Ao carregar arquivos empacotados com PyInstaller, use `sys._MEIPASS` para localizar recursos embutidos:
+```python
+import sys, os
+if getattr(sys, 'frozen', False):
+    base_path = sys._MEIPASS
+else:
+    base_path = os.path.dirname(__file__)
+path_arquivo = os.path.join(base_path, 'gui', 'algum_arquivo')
+```
+- Revise dependências desnecessárias (ex.: `networkx`, `statsmodels`) se quiser reduzir o tamanho do `.exe`.
+
+---
+
+## 🛠️ Dicas de Debug (se o exe fechar instantaneamente)
+
+- Gere o exe com console removendo `--windowed` para ver tracebacks.  
+- Teste `python app.py` e corrija todos os erros antes de empacotar.  
+- Use `--hidden-import` no PyInstaller se faltar algum import detectado apenas em runtime.
+
+---
+
+## 🤝 Contribuições
+
+Contribuições são bem-vindas!
+
+1. Fork -> 2. Branch (`feature/x`) -> 3. Commit -> 4. Pull Request.  
+Abra *issues* para bugs ou sugestões.
+
+---
+
+## 📄 Licença
+
+Projeto sob licença **MIT**. Veja `LICENSE` para detalhes.
+
+---
+
+## ✉️ Contato
+
+**Lucas Nicácio** — lucas.nicacio@ufv.br
+GitHub: https://github.com/PatrickSN
+---
